@@ -88,6 +88,10 @@ All tasks should be executed through the [`Makefile`](file:///Users/volki/Dev/mh
 
 ## 🧠 Rules for Modifying the Codebase
 
+### 0. General Topics that apply to every modification
+- **Branching** Create a feaure branch for every feature you implement. Naming should be *feature/<useful feature name> where **useful** means a precise shortcut for the pending modification.
+- **TDD** Implement new code based on *TDD*: Before adding new code ensure there is a failing test.
+
 ### 1. Backend (`app/`)
 - **Use async where appropriate:** Heavy I/O (like calling Open Food Facts via `httpx`) must be asynchronous. Database endpoints using synchronous SQLAlchemy sessions run with standard def endpoints (FastAPI automatically handles them in a worker thread pool).
 - **Timezone Awareness:** Use `datetime.now(timezone.utc)` instead of deprecated `datetime.utcnow()`.
