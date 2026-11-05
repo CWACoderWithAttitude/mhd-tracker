@@ -30,6 +30,28 @@
     </header>
 
     <main class="max-w-2xl mx-auto px-4 py-4 space-y-4">
+      <!-- HTTP Mobile Notice Banner -->
+      <div
+        v-if="showHttpNotice"
+        class="p-3 rounded-2xl bg-amber-950/40 border border-amber-600/40 text-amber-200 text-xs flex items-start justify-between gap-3"
+      >
+        <div class="flex items-start gap-2.5">
+          <AlertTriangle class="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div class="space-y-1">
+            <p class="font-bold text-amber-300">Connected via HTTP</p>
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+              Mobile browsers block live video streams on HTTP. You can still scan by tapping <strong>Take Photo</strong> in the scanner, or launch the server with <code class="text-amber-300 bg-black/40 px-1 py-0.5 rounded font-mono">make run-ssl</code> for live camera!
+            </p>
+          </div>
+        </div>
+        <button
+          @click="showHttpNotice = false"
+          class="p-1 rounded text-slate-400 hover:text-white"
+        >
+          <X class="w-4 h-4" />
+        </button>
+      </div>
+
       <!-- Dashboard Stats Cards -->
       <div class="grid grid-cols-3 gap-2.5">
         <!-- Expired -->
@@ -340,6 +362,12 @@ const isLoading = ref(false)
 const searchQuery = ref('')
 const activeFilter = ref('active')
 const toastMessage = ref('')
+const showHttpNotice = ref(
+  !window.isSecureContext &&
+  window.location.hostname !== 'localhost' &&
+  window.location.hostname !== '127.0.0.1'
+)
+
 
 const isBarcodeModalOpen = ref(false)
 const isDateModalOpen = ref(false)

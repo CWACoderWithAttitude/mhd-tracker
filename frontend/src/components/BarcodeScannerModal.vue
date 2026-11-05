@@ -1,10 +1,13 @@
 <template>
-  <div class="fixed inset-0 z-50 bg-black/90 flex flex-col justify-between backdrop-blur-sm">
+  <div class="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between backdrop-blur-md">
     <!-- Header -->
-    <div class="flex items-center justify-between p-4 bg-slate-900/80 border-b border-slate-800 text-white z-10">
+    <div class="flex items-center justify-between p-4 bg-slate-900/90 border-b border-slate-800 text-white z-10">
       <div class="flex items-center gap-2">
         <Barcode class="w-6 h-6 text-emerald-400" />
-        <h3 class="font-semibold text-lg">Scan EAN Barcode</h3>
+        <div>
+          <h3 class="font-semibold text-lg leading-tight">Scan EAN Barcode</h3>
+          <p class="text-xs text-slate-400">Point at product barcode or take a photo</p>
+        </div>
       </div>
       <button
         @click="closeScanner"
@@ -15,14 +18,14 @@
     </div>
 
     <!-- Scanner Viewport Area -->
-    <div class="relative flex-1 flex flex-col items-center justify-center overflow-hidden">
-      <!-- Camera container -->
-      <div id="barcode-reader" class="w-full max-w-md h-full max-h-[460px] overflow-hidden rounded-xl bg-black relative"></div>
+    <div class="relative flex-1 flex flex-col items-center justify-center overflow-hidden bg-black">
+      <!-- Live Video element container for Html5Qrcode -->
+      <div id="barcode-reader" class="w-full h-full max-h-[500px] overflow-hidden relative"></div>
 
-      <!-- Overlay Reticle Guidelines -->
-      <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div class="w-72 h-44 border-2 border-emerald-400/80 rounded-2xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
-          <!-- Animated laser scanner bar -->
+      <!-- Live Overlay Reticle Guidelines (only shown when live camera is running) -->
+      <div v-if="isScanningLive" class="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div class="w-72 h-44 border-2 border-emerald-400/90 rounded-2xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]">
+          <!-- Animated laser scan line -->
           <div class="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse shadow-[0_0_8px_#34d399] top-1/2 -translate-y-1/2"></div>
           <span class="absolute -bottom-8 inset-x-0 text-center text-xs text-emerald-300 font-medium tracking-wide">
             Align barcode inside frame
@@ -30,53 +33,103 @@
         </div>
       </div>
 
-      <!-- Loading / Camera Error -->
+      <!-- Processing indicator -->
+      <div v-if="isProcessingFile" class="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center p-6 text-center z-20">
+        <Loader2 class="w-10 h-10 animate-spin text-emerald-400 mb-3" />
+        <p class="text-white font-medium text-sm">Decoding barcode from photo...</p>
+      </div>
+
+      <!-- Insecure Context / Camera Access Fallback UI -->
       <div v-if="cameraError" class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center z-20">
-        <AlertCircle class="w-12 h-12 text-rose-500 mb-3" />
-        <h4 class="text-white font-medium text-lg mb-1">Camera Access Issue</h4>
-        <p class="text-slate-400 text-sm max-w-xs mb-4">{{ cameraError }}</p>
+        <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3">
+          <Camera class="w-8 h-8" />
+        </div>
+
+        <h4 class="text-white font-bold text-lg mb-1">
+          {{ isHttpNonLocal ? 'Live Camera Requires HTTPS' : 'Camera Access Unavailable' }}
+        </h4>
+
+        <p class="text-slate-300 text-xs max-w-sm mb-4 leading-relaxed">
+          <span v-if="isHttpNonLocal">
+            Mobile browsers (iOS Safari & Android Chrome) block live WebRTC video streams over plain HTTP.
+            <br /><br />
+            <strong>Good news:</strong> You can snap a photo directly using your phone's native camera below!
+          </span>
+          <span v-else>
+            {{ cameraError }}
+          </span>
+        </p>
+
+        <!-- Primary Native Camera Button (works 100% on iOS & Android over HTTP & HTTPS) -->
         <button
-          @click="startScanning"
-          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium text-sm transition"
+          @click="openNativeCamera"
+          class="w-full max-w-xs py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 mb-3 transition"
         >
-          Try Again
+          <Camera class="w-5 h-5" />
+          <span>Snap Barcode Photo</span>
         </button>
+
+        <p v-if="isHttpNonLocal" class="text-[11px] text-slate-500 max-w-xs">
+          Tip: Run <code class="text-emerald-400 bg-slate-900 px-1.5 py-0.5 rounded">make run-ssl</code> on your server to enable live video on mobile!
+        </p>
       </div>
     </div>
 
+    <!-- Hidden native camera input (capture="environment" directly triggers mobile camera app!) -->
+    <input
+      ref="nativeCameraInputRef"
+      type="file"
+      accept="image/*"
+      capture="environment"
+      class="hidden"
+      @change="onFileSelected"
+    />
+
+    <!-- Hidden regular file picker for gallery / desktop -->
+    <input
+      ref="filePickerRef"
+      type="file"
+      accept="image/*"
+      class="hidden"
+      @change="onFileSelected"
+    />
+
     <!-- Bottom Controls & Fallbacks -->
     <div class="p-4 bg-slate-900/90 border-t border-slate-800 flex flex-col gap-3 z-10 max-w-md mx-auto w-full">
-      <!-- Camera switch & Torch -->
-      <div class="flex items-center justify-center gap-4">
+      <!-- Action buttons -->
+      <div class="grid grid-cols-2 gap-2">
+        <!-- Native Camera Snap Button -->
         <button
-          v-if="hasMultipleCameras"
-          @click="switchCamera"
-          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-medium hover:bg-slate-700 transition"
+          @click="openNativeCamera"
+          class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs transition shadow"
         >
-          <SwitchCamera class="w-4 h-4" />
-          Switch Camera
+          <Camera class="w-4 h-4" />
+          <span>Take Photo</span>
         </button>
 
-        <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-medium hover:bg-slate-700 cursor-pointer transition">
+        <!-- Choose from Gallery / Files -->
+        <button
+          @click="openFilePicker"
+          class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs transition border border-slate-700"
+        >
           <UploadCloud class="w-4 h-4" />
-          <span>Upload Image</span>
-          <input type="file" accept="image/*" class="hidden" @change="onFileSelected" />
-        </label>
+          <span>Photo Gallery</span>
+        </button>
       </div>
 
       <!-- Manual Test Code Entry -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
         <input
           v-model="manualBarcode"
           type="text"
-          placeholder="Or enter barcode manually..."
-          class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+          placeholder="Or type barcode manually..."
+          class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
           @keyup.enter="submitManualBarcode"
         />
         <button
           @click="submitManualBarcode"
           :disabled="!manualBarcode.trim()"
-          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition"
+          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition"
         >
           Submit
         </button>
@@ -88,47 +141,43 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
-import { Barcode, X, AlertCircle, SwitchCamera, UploadCloud } from 'lucide-vue-next'
+import { Barcode, X, Camera, UploadCloud, Loader2 } from 'lucide-vue-next'
 import { playBeepSound } from '../utils/dateParser'
 
 const emit = defineEmits(['detected', 'close'])
 
 let html5QrCode = null
+const isScanningLive = ref(false)
+const isProcessingFile = ref(false)
 const cameraError = ref(null)
 const manualBarcode = ref('')
-const hasMultipleCameras = ref(false)
-const cameras = ref([])
-const currentCameraIndex = ref(0)
+const isHttpNonLocal = ref(false)
+
+const nativeCameraInputRef = ref(null)
+const filePickerRef = ref(null)
 
 onMounted(async () => {
-  await initScanner()
+  checkEnvironmentAndStart()
 })
 
 onUnmounted(async () => {
   await stopScanner()
 })
 
-async function initScanner() {
-  cameraError.value = null
-  try {
-    const devices = await Html5Qrcode.getCameras()
-    if (devices && devices.length > 0) {
-      cameras.value = devices
-      hasMultipleCameras.value = devices.length > 1
-      // Prefer back camera if found
-      const backIndex = devices.findIndex(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'))
-      currentCameraIndex.value = backIndex !== -1 ? backIndex : 0
-      await startScanning()
-    } else {
-      cameraError.value = 'No camera found on this device.'
-    }
-  } catch (err) {
-    cameraError.value = 'Camera permission was denied or camera is unavailable.'
-    console.error(err)
+function checkEnvironmentAndStart() {
+  const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  const hasMediaDevices = !!(navigator?.mediaDevices?.getUserMedia)
+
+  if (!isSecure || !hasMediaDevices) {
+    isHttpNonLocal.value = true
+    cameraError.value = 'Live video camera is disabled by your mobile browser because this connection is not HTTPS.'
+    return
   }
+
+  startLiveScanner()
 }
 
-async function startScanning() {
+async function startLiveScanner() {
   cameraError.value = null
   try {
     if (!html5QrCode) {
@@ -145,12 +194,11 @@ async function startScanning() {
       })
     }
 
-    const cameraId = cameras.value[currentCameraIndex.value]?.id || { facingMode: 'environment' }
-
+    // Pass facingMode: 'environment' directly to request rear camera without getCameras()
     await html5QrCode.start(
-      cameraId,
+      { facingMode: 'environment' },
       {
-        fps: 15,
+        fps: 10,
         qrbox: { width: 280, height: 180 },
         aspectRatio: 1.0,
       },
@@ -158,16 +206,20 @@ async function startScanning() {
         handleBarcodeFound(decodedText)
       },
       () => {
-        // scan failure / frame skip, normal
+        // Frame skipped without barcode - normal
       }
     )
+
+    isScanningLive.value = true
   } catch (err) {
-    console.error('Failed to start html5QrCode:', err)
-    cameraError.value = 'Failed to start camera preview. Please check camera permissions.'
+    console.warn('Live scanner start error:', err)
+    isScanningLive.value = false
+    cameraError.value = 'Could not access the live camera stream. You can snap a photo with your camera instead!'
   }
 }
 
 async function stopScanner() {
+  isScanningLive.value = false
   if (html5QrCode) {
     try {
       if (html5QrCode.isScanning) {
@@ -179,13 +231,6 @@ async function stopScanner() {
     }
     html5QrCode = null
   }
-}
-
-async function switchCamera() {
-  if (cameras.value.length < 2) return
-  await stopScanner()
-  currentCameraIndex.value = (currentCameraIndex.value + 1) % cameras.value.length
-  await startScanning()
 }
 
 function handleBarcodeFound(barcode) {
@@ -202,18 +247,45 @@ function submitManualBarcode() {
   }
 }
 
+function openNativeCamera() {
+  if (nativeCameraInputRef.value) {
+    nativeCameraInputRef.value.click()
+  }
+}
+
+function openFilePicker() {
+  if (filePickerRef.value) {
+    filePickerRef.value.click()
+  }
+}
+
 async function onFileSelected(e) {
   const file = e.target.files?.[0]
   if (!file) return
 
+  isProcessingFile.value = true
   try {
     if (!html5QrCode) {
-      html5QrCode = new Html5Qrcode('barcode-reader')
+      html5QrCode = new Html5Qrcode('barcode-reader', {
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.QR_CODE,
+        ],
+        verbose: false,
+      })
     }
     const result = await html5QrCode.scanFile(file, true)
     handleBarcodeFound(result)
   } catch (err) {
-    alert('Could not find a valid barcode in this image. Try another picture.')
+    alert('No barcode detected in the photo. Please ensure the barcode is sharp, well-lit, and try again.')
+  } finally {
+    isProcessingFile.value = false
+    // reset input so the same file can be selected again
+    e.target.value = ''
   }
 }
 

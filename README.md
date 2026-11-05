@@ -41,7 +41,8 @@ A [`Makefile`](file:///Users/volki/Dev/mhd-tracker/Makefile) is provided with al
 | `make help` | Display available targets |
 | `make install` | Install backend (`uv`) and frontend (`npm`) dependencies |
 | `make build` | Compile Vue 3 frontend assets to `frontend/dist` |
-| `make run` | Build frontend and run unified server on `http://0.0.0.0:8000` |
+| `make run` | Build frontend and run HTTP server on `http://0.0.0.0:8000` |
+| `make run-ssl` | **Recommended for mobile:** Run HTTPS server on `https://0.0.0.0:8000` (enables live camera) |
 | `make dev-backend` | Run FastAPI with auto-reload on `http://localhost:8000` |
 | `make dev-frontend` | Run Vite frontend development server with HMR on `http://localhost:5173` |
 | `make test` | Run pytest test suite |
@@ -49,19 +50,20 @@ A [`Makefile`](file:///Users/volki/Dev/mhd-tracker/Makefile) is provided with al
 | `make clean` | Clean build artifacts and temporary cache files |
 | `make clean-db` | Reset SQLite database |
 
-### One-Command Launch:
-```bash
-make run
-```
+### Running on Mobile Devices
 
-Open your browser at:
-- **Local machine:** [http://localhost:8000](http://localhost:8000)
-- **Smartphone on Wi-Fi:** `http://<your-computer-ip>:8000` (e.g. `http://192.168.1.120:8000`)
-- **Interactive API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+Mobile browsers (iOS Safari, Android Chrome, and Firefox) strictly enforce **Secure Contexts (HTTPS)** for live video camera streams:
 
-- **Interactive API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+1. **Option A: Live Video Scanning (Recommended)**
+   Launch with SSL:
+   ```bash
+   make run-ssl
+   ```
+   Open `https://<your-ip>:8000` on your iPhone or Xiaomi device. Accept the self-signed certificate warning once, and live camera scanning will work directly.
 
-*(Note: Modern mobile browsers require HTTPS or `localhost` to grant camera permissions. For mobile devices testing over local Wi-Fi, you can use an HTTPS tunnel like cloudflared/ngrok or enable insecure origins flags in Chrome/Safari).*
+2. **Option B: Native Camera Snapshot (Works over plain HTTP or HTTPS)**
+   If running over plain HTTP (`make run`), tap the **Take Photo** button inside the scanner modal. This triggers your phone's native camera app directly to capture and decode the barcode or date stamp without needing HTTPS.
+
 
 ---
 

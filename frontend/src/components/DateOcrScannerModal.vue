@@ -1,7 +1,7 @@
 <template>
   <div class="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between backdrop-blur-md">
     <!-- Header -->
-    <div class="flex items-center justify-between p-4 bg-slate-900/80 border-b border-slate-800 text-white z-10">
+    <div class="flex items-center justify-between p-4 bg-slate-900/90 border-b border-slate-800 text-white z-10">
       <div class="flex items-center gap-2">
         <Calendar class="w-6 h-6 text-sky-400" />
         <div>
@@ -18,9 +18,10 @@
     </div>
 
     <!-- Scanner Viewport Area -->
-    <div class="relative flex-1 flex flex-col items-center justify-center overflow-hidden">
+    <div class="relative flex-1 flex flex-col items-center justify-center overflow-hidden bg-black">
       <!-- Live Video element -->
       <video
+        v-if="isScanningLive"
         ref="videoEl"
         autoplay
         playsinline
@@ -28,10 +29,9 @@
         class="w-full h-full object-cover"
       ></video>
 
-      <!-- Reticle Box for Date Crop -->
-      <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+      <!-- Reticle Box for Date Crop (shown during live scanning) -->
+      <div v-if="isScanningLive" class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <div
-          ref="reticleEl"
           class="w-72 h-28 border-2 border-sky-400/90 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] flex items-center justify-center"
         >
           <!-- Corner brackets -->
@@ -51,6 +51,41 @@
 
         <p class="mt-4 text-xs text-slate-300 text-center max-w-xs px-4">
           e.g. <span class="text-sky-300 font-mono">15.08.2025</span>, <span class="text-sky-300 font-mono">24/11/26</span> or <span class="text-sky-300 font-mono">09/2026</span>
+        </p>
+      </div>
+
+      <!-- Insecure Context / Camera Access Fallback UI -->
+      <div v-if="cameraError" class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center z-20">
+        <div class="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 mb-3">
+          <Calendar class="w-8 h-8" />
+        </div>
+
+        <h4 class="text-white font-bold text-lg mb-1">
+          {{ isHttpNonLocal ? 'Live Camera Requires HTTPS' : 'Camera Access Issue' }}
+        </h4>
+
+        <p class="text-slate-300 text-xs max-w-sm mb-4 leading-relaxed">
+          <span v-if="isHttpNonLocal">
+            Mobile browsers disable live video over HTTP.
+            <br /><br />
+            <strong>You can take a photo of the date stamp directly using your phone's camera!</strong>
+          </span>
+          <span v-else>
+            {{ cameraError }}
+          </span>
+        </p>
+
+        <!-- Native Camera Snap Button -->
+        <button
+          @click="openNativeCamera"
+          class="w-full max-w-xs py-3.5 px-6 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-sky-950/50 flex items-center justify-center gap-2 mb-3 transition"
+        >
+          <Camera class="w-5 h-5" />
+          <span>Snap Date Stamp Photo</span>
+        </button>
+
+        <p v-if="isHttpNonLocal" class="text-[11px] text-slate-500 max-w-xs">
+          Tip: Run <code class="text-sky-400 bg-slate-900 px-1.5 py-0.5 rounded">make run-ssl</code> for live video scanning on your mobile!
         </p>
       </div>
 
@@ -77,53 +112,62 @@
         </button>
       </div>
 
-      <!-- Raw text debug preview (collapsible) -->
+      <!-- Raw text debug preview -->
       <div
         v-if="rawOcrText && !detectedDate"
         class="absolute top-4 inset-x-4 bg-slate-950/80 border border-slate-700 rounded-lg p-2 text-xs text-slate-300 font-mono truncate text-center z-10"
       >
         OCR reading: "{{ rawOcrText }}"
       </div>
-
-      <!-- Camera error -->
-      <div v-if="cameraError" class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center z-20">
-        <AlertCircle class="w-12 h-12 text-rose-500 mb-3" />
-        <h4 class="text-white font-medium text-lg mb-1">Camera Issue</h4>
-        <p class="text-slate-400 text-sm max-w-xs mb-4">{{ cameraError }}</p>
-        <button
-          @click="startCamera"
-          class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-medium text-sm transition"
-        >
-          Try Again
-        </button>
-      </div>
     </div>
 
     <!-- Hidden canvas for image capture and cropping -->
     <canvas ref="canvasEl" class="hidden"></canvas>
 
+    <!-- Hidden native camera input (capture="environment") -->
+    <input
+      ref="nativeCameraInputRef"
+      type="file"
+      accept="image/*"
+      capture="environment"
+      class="hidden"
+      @change="onFileSelected"
+    />
+
+    <!-- Hidden regular file picker -->
+    <input
+      ref="filePickerRef"
+      type="file"
+      accept="image/*"
+      class="hidden"
+      @change="onFileSelected"
+    />
+
     <!-- Bottom Controls -->
     <div class="p-4 bg-slate-900/90 border-t border-slate-800 flex flex-col gap-3 z-10 max-w-md mx-auto w-full">
-      <div class="flex items-center gap-3">
-        <!-- Manual Capture Button -->
+      <div class="grid grid-cols-2 gap-2">
+        <!-- Native Camera Snap Button -->
         <button
-          @click="captureAndOcr"
+          @click="openNativeCamera"
           :disabled="isProcessing"
-          class="flex-1 py-3 px-4 bg-sky-600 hover:bg-sky-500 active:scale-95 disabled:opacity-50 text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg transition"
+          class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-95 disabled:opacity-50 text-white font-bold text-xs transition shadow"
         >
-          <Camera class="w-5 h-5" />
-          <span>{{ isProcessing ? 'Scanning...' : 'Capture & Scan Date' }}</span>
+          <Camera class="w-4 h-4" />
+          <span>{{ isProcessing ? 'Scanning...' : 'Take Photo' }}</span>
         </button>
 
-        <!-- Upload from gallery / file -->
-        <label class="p-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl cursor-pointer transition">
-          <UploadCloud class="w-5 h-5" />
-          <input type="file" accept="image/*" class="hidden" @change="onFileSelected" />
-        </label>
+        <!-- Choose from Gallery -->
+        <button
+          @click="openFilePicker"
+          class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs transition border border-slate-700"
+        >
+          <UploadCloud class="w-4 h-4" />
+          <span>Photo Gallery</span>
+        </button>
       </div>
 
       <!-- Manual Date Picker Fallback -->
-      <div class="flex items-center gap-2 pt-1 border-t border-slate-800/60">
+      <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
         <span class="text-xs text-slate-400 whitespace-nowrap">Or pick date:</span>
         <input
           v-model="manualInputDate"
@@ -145,17 +189,20 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { createWorker } from 'tesseract.js'
-import { Calendar, X, Camera, AlertCircle, UploadCloud, Loader2 } from 'lucide-vue-next'
+import { Calendar, X, Camera, UploadCloud, Loader2 } from 'lucide-vue-next'
 import { parseExpirationDate, playBeepSound } from '../utils/dateParser'
 
 const emit = defineEmits(['detected', 'close'])
 
 const videoEl = ref(null)
 const canvasEl = ref(null)
-const reticleEl = ref(null)
+const nativeCameraInputRef = ref(null)
+const filePickerRef = ref(null)
 
+const isScanningLive = ref(false)
 const isProcessing = ref(false)
 const cameraError = ref(null)
+const isHttpNonLocal = ref(false)
 const detectedDate = ref(null)
 const rawOcrText = ref('')
 const manualInputDate = ref('')
@@ -165,14 +212,8 @@ let tesseractWorker = null
 let autoScanInterval = null
 
 onMounted(async () => {
-  await startCamera()
+  checkEnvironmentAndStart()
   await initWorker()
-  // Start gentle auto-scan every 2.5 seconds
-  autoScanInterval = setInterval(() => {
-    if (!isProcessing.value && !detectedDate.value) {
-      captureAndOcr()
-    }
-  }, 2500)
 })
 
 onUnmounted(async () => {
@@ -187,12 +228,24 @@ onUnmounted(async () => {
   }
 })
 
+function checkEnvironmentAndStart() {
+  const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  const hasMediaDevices = !!(navigator?.mediaDevices?.getUserMedia)
+
+  if (!isSecure || !hasMediaDevices) {
+    isHttpNonLocal.value = true
+    cameraError.value = 'Live video is disabled by your browser because connection is not HTTPS.'
+    return
+  }
+
+  startLiveCamera()
+}
+
 async function initWorker() {
   try {
     tesseractWorker = await createWorker('deu+eng', 1, {
       logger: (m) => {},
     })
-    // Whitelist digits and common date separators/letters
     await tesseractWorker.setParameters({
       tessedit_char_whitelist: '0123456789./- :MHDBEXPBbestbeforeMhdExpJanFebMarAprMaiJunJulAugSepOktNovDez',
     })
@@ -201,7 +254,7 @@ async function initWorker() {
   }
 }
 
-async function startCamera() {
+async function startLiveCamera() {
   cameraError.value = null
   try {
     const constraints = {
@@ -212,19 +265,41 @@ async function startCamera() {
       },
     }
     stream = await navigator.mediaDevices.getUserMedia(constraints)
+    isScanningLive.value = true
     if (videoEl.value) {
       videoEl.value.srcObject = stream
     }
+
+    // Auto-scan every 2.5s
+    autoScanInterval = setInterval(() => {
+      if (!isProcessing.value && !detectedDate.value) {
+        captureAndOcr()
+      }
+    }, 2500)
   } catch (err) {
-    console.error('Camera stream error:', err)
-    cameraError.value = 'Could not access camera. Please allow camera permissions or upload an image.'
+    console.warn('Camera stream error:', err)
+    isScanningLive.value = false
+    cameraError.value = 'Could not access the live camera stream. You can take a photo of the date stamp instead!'
   }
 }
 
 function stopCamera() {
+  isScanningLive.value = false
   if (stream) {
     stream.getTracks().forEach((track) => track.stop())
     stream = null
+  }
+}
+
+function openNativeCamera() {
+  if (nativeCameraInputRef.value) {
+    nativeCameraInputRef.value.click()
+  }
+}
+
+function openFilePicker() {
+  if (filePickerRef.value) {
+    filePickerRef.value.click()
   }
 }
 
@@ -238,11 +313,9 @@ async function captureAndOcr() {
     const canvas = canvasEl.value
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
-    // Calculate crop coordinates based on center reticle
     const vw = video.videoWidth
     const vh = video.videoHeight
 
-    // Reticle is roughly 65% width and 25% height in center
     const cropW = Math.floor(vw * 0.65)
     const cropH = Math.floor(vh * 0.28)
     const cropX = Math.floor((vw - cropW) / 2)
@@ -251,23 +324,20 @@ async function captureAndOcr() {
     canvas.width = cropW
     canvas.height = cropH
 
-    // Draw cropped region
     ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
 
-    // Image preprocessing: Grayscale + high contrast to enhance laser dot matrix prints
+    // Preprocessing: High contrast grayscale
     const imgData = ctx.getImageData(0, 0, cropW, cropH)
     const data = imgData.data
     for (let i = 0; i < data.length; i += 4) {
-      const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114)
-      // High contrast curve
-      const adjusted = avg > 120 ? 255 : (avg < 80 ? 0 : avg)
+      const avg = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114
+      const adjusted = avg > 120 ? 255 : avg < 80 ? 0 : avg
       data[i] = adjusted
       data[i + 1] = adjusted
       data[i + 2] = adjusted
     }
     ctx.putImageData(imgData, 0, 0)
 
-    // Run Tesseract
     const { data: result } = await tesseractWorker.recognize(canvas)
     const text = result.text.trim()
     rawOcrText.value = text
@@ -297,12 +367,13 @@ async function onFileSelected(e) {
       detectedDate.value = parsed
       playBeepSound()
     } else {
-      alert(`Could not extract expiration date from image. Text found: "${result.text.slice(0, 80)}"`)
+      alert(`Could not extract date from photo. Text found: "${result.text.slice(0, 80)}"`)
     }
   } catch (err) {
     alert('Error reading image file for OCR.')
   } finally {
     isProcessing.value = false
+    e.target.value = ''
   }
 }
 

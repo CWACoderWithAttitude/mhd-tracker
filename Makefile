@@ -6,7 +6,7 @@ GREEN  := \033[32m
 YELLOW := \033[33m
 RESET  := \033[0m
 
-.PHONY: help install install-backend install-frontend build run dev-backend dev-frontend test test-v seed clean clean-db
+.PHONY: help install install-backend install-frontend build run run-ssl cert dev-backend dev-frontend test test-v seed clean clean-db
 
 help: ## Show this help message
 	@echo ""
@@ -31,12 +31,31 @@ build: ## Build frontend assets into frontend/dist for production
 	cd frontend && npm run build
 	@echo "$(GREEN)✓ Frontend assets compiled to frontend/dist$(RESET)"
 
-run: build ## Build frontend & run unified server (http://0.0.0.0:8000)
+cert: ## Generate self-signed SSL certificate for local HTTPS (certs/)
+	@echo "$(CYAN)Checking / generating SSL certificate...$(RESET)"
+	@mkdir -p certs
+	@if [ ! -f certs/cert.pem ] || [ ! -f certs/key.pem ]; then \
+		openssl req -x509 -newkey rsa:2048 -nodes -keyout certs/key.pem -out certs/cert.pem -days 365 -subj "/CN=mhd-tracker" 2>/dev/null; \
+		echo "$(GREEN)✓ New SSL certificate generated in certs/$(RESET)"; \
+	else \
+		echo "$(GREEN)✓ SSL certificates already exist in certs/$(RESET)"; \
+	fi
+
+run: build ## Build frontend & run HTTP server (http://0.0.0.0:8000)
 	@echo "$(GREEN)=====================================================$(RESET)"
 	@echo "$(GREEN) Starting MHD Tracker on http://0.0.0.0:8000 $(RESET)"
 	@echo "$(GREEN) Accessible on your local Wi-Fi from mobile devices  $(RESET)"
 	@echo "$(GREEN)=====================================================$(RESET)"
 	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+run-ssl: build cert ## Build frontend & run HTTPS server (https://0.0.0.0:8000) for mobile live camera
+	@echo "$(GREEN)=====================================================$(RESET)"
+	@echo "$(GREEN) Starting HTTPS MHD Tracker on https://0.0.0.0:8000 $(RESET)"
+	@echo "$(GREEN) Unlocks live camera scanning on iPhone & Android   $(RESET)"
+	@echo "$(GREEN) (Accept self-signed certificate in mobile browser) $(RESET)"
+	@echo "$(GREEN)=====================================================$(RESET)"
+	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile certs/key.pem --ssl-certfile certs/cert.pem
+
 
 dev-backend: ## Run FastAPI backend with live reload (http://localhost:8000)
 	@echo "$(CYAN)Starting FastAPI backend with live reload...$(RESET)"
