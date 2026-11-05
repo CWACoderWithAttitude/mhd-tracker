@@ -32,22 +32,33 @@ A modern, responsive, mobile-first web application to track household grocery in
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (via Makefile)
 
-### 1. Prerequisites
-- Python 3.10+ (managed via `uv`)
-- Node.js 18+ (for building the frontend)
+A [`Makefile`](file:///Users/volki/Dev/mhd-tracker/Makefile) is provided with all common targets:
 
-### 2. Start the App
-Run the backend with `uv` (it serves both API and frontend on port 8000):
+| Command | Action |
+|---|---|
+| `make help` | Display available targets |
+| `make install` | Install backend (`uv`) and frontend (`npm`) dependencies |
+| `make build` | Compile Vue 3 frontend assets to `frontend/dist` |
+| `make run` | Build frontend and run unified server on `http://0.0.0.0:8000` |
+| `make dev-backend` | Run FastAPI with auto-reload on `http://localhost:8000` |
+| `make dev-frontend` | Run Vite frontend development server with HMR on `http://localhost:5173` |
+| `make test` | Run pytest test suite |
+| `make seed` | Populate SQLite database with sample groceries |
+| `make clean` | Clean build artifacts and temporary cache files |
+| `make clean-db` | Reset SQLite database |
 
+### One-Command Launch:
 ```bash
-uv run python main.py
+make run
 ```
 
 Open your browser at:
 - **Local machine:** [http://localhost:8000](http://localhost:8000)
 - **Smartphone on Wi-Fi:** `http://<your-computer-ip>:8000` (e.g. `http://192.168.1.120:8000`)
+- **Interactive API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
 - **Interactive API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 
 *(Note: Modern mobile browsers require HTTPS or `localhost` to grant camera permissions. For mobile devices testing over local Wi-Fi, you can use an HTTPS tunnel like cloudflared/ngrok or enable insecure origins flags in Chrome/Safari).*
