@@ -65,9 +65,12 @@ dev-frontend: ## Run Vite frontend development server (http://localhost:5173)
 	@echo "$(CYAN)Starting Vite frontend dev server with HMR...$(RESET)"
 	cd frontend && npm run dev
 
-test: ## Run unit and integration tests with pytest
-	@echo "$(CYAN)Running pytest test suite...$(RESET)"
+test: ## Run unit and integration tests with pytest and vitest
+	@echo "$(CYAN)Running backend tests with pytest...$(RESET)"
 	uv run pytest
+	@echo "$(CYAN)Running frontend tests with vitest...$(RESET)"
+	cd frontend && npm run test
+
 
 test-v: ## Run pytest with verbose output
 	@echo "$(CYAN)Running pytest with verbose details...$(RESET)"
