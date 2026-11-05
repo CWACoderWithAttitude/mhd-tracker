@@ -54,7 +54,8 @@ run-ssl: build cert ## Build frontend & run HTTPS server (https://0.0.0.0:8000) 
 	@echo "$(GREEN) Unlocks live camera scanning on iPhone & Android   $(RESET)"
 	@echo "$(GREEN) (Accept self-signed certificate in mobile browser) $(RESET)"
 	@echo "$(GREEN)=====================================================$(RESET)"
-	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile certs/key.pem --ssl-certfile certs/cert.pem
+	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --ssl-keyfile certs/key.pem --ssl-certfile certs/cert.pem
+	#uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile certs/key.pem --ssl-certfile certs/cert.pem
 
 
 dev-backend: ## Run FastAPI backend with live reload (http://localhost:8000)
