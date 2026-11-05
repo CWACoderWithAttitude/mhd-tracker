@@ -1,0 +1,113 @@
+# MHD Tracker (Mindesthaltbarkeitsdatum Tracker)
+
+A modern, responsive, mobile-first web application to track household grocery inventory, scan EAN barcodes, and recognize expiration dates (MHD) directly using your smartphone's camera.
+
+---
+
+## 🌟 Key Features
+
+1. **EAN Barcode Scanning & Auto-Lookup**
+   - Live camera barcode scanner (EAN-13, EAN-8, UPC, Code 128, QR).
+   - Integrated with **Open Food Facts API** & local cache: instantly fetches product title, brand, category, and packaging photos upon barcode detection.
+   - Camera switcher, flashlight support, and image upload fallback.
+
+2. **MHD / Expiration Date OCR Scanner**
+   - High-contrast camera reticle tailored for food packaging date stamps.
+   - Client-side OCR powered by **Tesseract.js** (no cloud latency, runs privately on device).
+   - Smart parser supporting European (`DD.MM.YYYY`, `DD/MM/YY`), text-month (`15 MAI 2025`), and month/year (`MM/YYYY`) date formats.
+
+3. **Reactive Mobile Interface**
+   - Mobile-first PWA-ready design optimized for touch and handheld scanning.
+   - Urgency color-coding:
+     - 🔴 **Expired** (with days elapsed counter)
+     - 🟠 **Expiring Soon** (≤ 3 days countdown)
+     - 🟢 **Fresh**
+   - Quick one-tap "Consume" button to decrement quantity or mark item consumed.
+   - Filter by location (Fridge, Pantry, Freezer, Spice Rack) or category.
+
+4. **Fast Backend with `uv`, FastAPI & SQLite**
+   - Modern Python project management with `uv`.
+   - SQLite persistence with SQLAlchemy models and Pydantic schemas.
+   - Static single-page application bundling: FastAPI serves both the API and frontend simultaneously.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+- Python 3.10+ (managed via `uv`)
+- Node.js 18+ (for building the frontend)
+
+### 2. Start the App
+Run the backend with `uv` (it serves both API and frontend on port 8000):
+
+```bash
+uv run python main.py
+```
+
+Open your browser at:
+- **Local machine:** [http://localhost:8000](http://localhost:8000)
+- **Smartphone on Wi-Fi:** `http://<your-computer-ip>:8000` (e.g. `http://192.168.1.120:8000`)
+- **Interactive API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+*(Note: Modern mobile browsers require HTTPS or `localhost` to grant camera permissions. For mobile devices testing over local Wi-Fi, you can use an HTTPS tunnel like cloudflared/ngrok or enable insecure origins flags in Chrome/Safari).*
+
+---
+
+## 🧪 Demo Data
+
+To populate your pantry with sample groceries (with varied expiration dates):
+
+```bash
+uv run python seed_demo.py
+```
+
+---
+
+## 🛠️ Project Structure
+
+```text
+mhd-tracker/
+├── app/
+│   ├── database.py             # SQLite connection and session maker
+│   ├── models.py               # SQLAlchemy models (Item, ProductCache)
+│   ├── schemas.py              # Pydantic schemas for validation
+│   ├── services/
+│   │   └── openfoodfacts.py    # Open Food Facts API lookup integration
+│   ├── routers/
+│   │   ├── items.py            # CRUD operations and dashboard stats
+│   │   └── lookup.py           # Barcode lookup endpoint
+│   └── main.py                 # FastAPI application and SPA static serving
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── BarcodeScannerModal.vue  # Camera barcode scanning
+│   │   │   ├── DateOcrScannerModal.vue  # Camera OCR expiration date scanning
+│   │   │   └── ItemFormModal.vue        # Item review, edit, and storage form
+│   │   ├── utils/
+│   │   │   └── dateParser.js            # European date normalization & audio feedback
+│   │   ├── App.vue                      # Reactive dashboard & pantry list
+│   │   └── main.js
+│   ├── package.json
+│   └── vite.config.js
+├── main.py                     # App entrypoint (runs uvicorn)
+├── pyproject.toml              # uv dependencies
+└── seed_demo.py                # Sample grocery items generator
+```
+
+---
+
+## 💻 Frontend Development (Optional)
+
+If you wish to edit frontend components with hot-module replacement (HMR):
+
+```bash
+cd frontend
+npm run dev
+```
+
+And to build production assets into `frontend/dist`:
+
+```bash
+npm run build
+```

@@ -1,0 +1,1 @@
+i want to create a web based MHD Tracker for my home. It should be based on fastapi, sqlite and uv. the webcliehnts should be reactive mobile webapps. the clients shoulkd be able to scan a) the ean bar code and b) the food expiration date. recognized data should be doisplayed to the used and than be stored in the server side db.
