@@ -15,8 +15,11 @@ build/
 frontend/node_modules/
 frontend/dist/
 
-# OS
+# OS & Editors
 .DS_Store
+*.swp
+*.swo
+
 
 # SSL Certificates
 certs/
