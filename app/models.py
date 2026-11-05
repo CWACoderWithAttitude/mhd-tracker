@@ -1,7 +1,11 @@
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 from typing import Optional
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime
 from app.database import Base
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 
 class Item(Base):
@@ -18,8 +22,8 @@ class Item(Base):
     notes = Column(Text, nullable=True)
     image_url = Column(String(1024), nullable=True)
     status = Column(String(50), default="active", index=True)  # active, consumed, discarded
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
 
 class ProductCache(Base):
@@ -30,4 +34,5 @@ class ProductCache(Base):
     brand = Column(String(255), nullable=True)
     category = Column(String(100), nullable=True)
     image_url = Column(String(1024), nullable=True)
-    fetched_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    fetched_at = Column(DateTime, default=utc_now, nullable=False)
+

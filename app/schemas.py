@@ -8,11 +8,12 @@ class ItemBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     brand: Optional[str] = None
     expiration_date: date
-    quantity: int = Field(default=1, ge=1)
+    quantity: int = Field(default=1, ge=0)
     category: Optional[str] = "Pantry"
     location: Optional[str] = "Fridge"
     notes: Optional[str] = None
     image_url: Optional[str] = None
+
 
 
 class ItemCreate(ItemBase):
