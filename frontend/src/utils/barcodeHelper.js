@@ -115,3 +115,32 @@ export async function optimizeImageForBarcode(file, maxDimension = 1600) {
     reader.readAsDataURL(file)
   })
 }
+
+/**
+ * Format camera errors into user-friendly and actionable instructions.
+ */
+export function formatCameraErrorMessage(err) {
+  if (!err) return 'Could not access the live camera stream.'
+
+  const name = err.name || ''
+  const msg = (err.message || String(err)).toLowerCase()
+
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || msg.includes('permission') || msg.includes('denied')) {
+    return 'Camera access was denied. Please allow camera permissions in your browser address bar settings.'
+  }
+
+  if (name === 'NotReadableError' || name === 'TrackStartError' || msg.includes('could not start video source') || msg.includes('in use')) {
+    return 'Camera hardware is currently in use by another app or browser tab. Please close other camera apps and try again.'
+  }
+
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || msg.includes('not found') || msg.includes('no camera')) {
+    return 'No camera device found on this system.'
+  }
+
+  if (name === 'OverconstrainedError' || msg.includes('overconstrained')) {
+    return 'Camera sensor does not support the requested resolution or framerate.'
+  }
+
+  return err.message || String(err) || 'Could not access the live camera stream.'
+}
+

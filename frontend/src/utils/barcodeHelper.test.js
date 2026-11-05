@@ -4,7 +4,9 @@ import {
   isValidEanChecksum,
   getOptimalQrboxDimensions,
   calculateDownscaleDimensions,
+  formatCameraErrorMessage,
 } from './barcodeHelper'
+
 
 describe('barcodeHelper', () => {
   describe('cleanBarcode', () => {
@@ -57,4 +59,24 @@ describe('barcodeHelper', () => {
       expect(res.height).toBe(600)
     })
   })
+
+  describe('formatCameraErrorMessage', () => {
+    it('returns permission guidance on NotAllowedError', () => {
+      const err = new Error('Permission denied')
+      err.name = 'NotAllowedError'
+      expect(formatCameraErrorMessage(err)).toContain('permission')
+    })
+
+    it('returns busy guidance on NotReadableError', () => {
+      const err = new Error('Could not start video source')
+      err.name = 'NotReadableError'
+      expect(formatCameraErrorMessage(err)).toContain('another app')
+    })
+
+    it('handles generic errors gracefully', () => {
+      const err = new Error('Unknown camera sensor issue')
+      expect(formatCameraErrorMessage(err)).toContain('Unknown camera sensor issue')
+    })
+  })
 })
+

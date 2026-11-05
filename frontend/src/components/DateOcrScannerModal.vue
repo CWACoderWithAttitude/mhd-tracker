@@ -191,6 +191,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { createWorker } from 'tesseract.js'
 import { Calendar, X, Camera, UploadCloud, Loader2 } from 'lucide-vue-next'
 import { parseExpirationDate, playBeepSound } from '../utils/dateParser'
+import { formatCameraErrorMessage } from '../utils/barcodeHelper'
+
 
 const emit = defineEmits(['detected', 'close'])
 
@@ -256,32 +258,63 @@ async function initWorker() {
 
 async function startLiveCamera() {
   cameraError.value = null
-  try {
-    const constraints = {
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-    }
-    stream = await navigator.mediaDevices.getUserMedia(constraints)
+  stopCamera()
+
+  function attachStreamAndScan(activeStream) {
+    stream = activeStream
     isScanningLive.value = true
     if (videoEl.value) {
       videoEl.value.srcObject = stream
     }
 
-    // Auto-scan every 2.5s
+    if (autoScanInterval) clearInterval(autoScanInterval)
     autoScanInterval = setInterval(() => {
       if (!isProcessing.value && !detectedDate.value) {
         captureAndOcr()
       }
     }, 2500)
-  } catch (err) {
-    console.warn('Camera stream error:', err)
+  }
+
+  // Tier 1: HD environment camera
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920, min: 1280 },
+        height: { ideal: 1080, min: 720 },
+      },
+    })
+    attachStreamAndScan(s)
+    return
+  } catch (tier1Err) {
+    console.warn('OCR camera tier 1 failed, trying tier 2:', tier1Err)
+  }
+
+  // Tier 2: Basic environment camera
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+    })
+    attachStreamAndScan(s)
+    return
+  } catch (tier2Err) {
+    console.warn('OCR camera tier 2 failed, trying tier 3:', tier2Err)
+  }
+
+  // Tier 3: Any video device
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({
+      video: true,
+    })
+    attachStreamAndScan(s)
+    return
+  } catch (tier3Err) {
+    console.error('All OCR camera tiers failed:', tier3Err)
     isScanningLive.value = false
-    cameraError.value = 'Could not access the live camera stream. You can take a photo of the date stamp instead!'
+    cameraError.value = formatCameraErrorMessage(tier3Err)
   }
 }
+
 
 function stopCamera() {
   isScanningLive.value = false

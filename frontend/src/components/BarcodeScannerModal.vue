@@ -41,17 +41,17 @@
         </div>
       </div>
 
-      <!-- Camera Quick Controls Overlay (Torch & Zoom) -->
+      <!-- Camera Quick Controls Overlay (Torch, Zoom, Lens Switch) -->
       <div
-        v-if="isScanningLive && (isTorchSupported || isZoomSupported)"
-        class="absolute top-4 inset-x-4 flex items-center justify-center gap-3 z-20 pointer-events-auto"
+        v-if="isScanningLive && (isTorchSupported || isZoomSupported || hasMultipleCameras)"
+        class="absolute top-4 inset-x-4 flex items-center justify-center gap-2.5 z-20 pointer-events-auto flex-wrap"
       >
         <!-- Torch / Flashlight Toggle Button -->
         <button
           v-if="isTorchSupported"
           @click="toggleTorch"
           :class="[
-            'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition shadow-lg backdrop-blur-md',
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition shadow-lg backdrop-blur-md',
             isTorchOn
               ? 'bg-amber-400 text-slate-950 shadow-amber-400/40 ring-2 ring-amber-300'
               : 'bg-slate-900/80 text-slate-200 border border-slate-700/80 hover:bg-slate-800'
@@ -59,17 +59,27 @@
         >
           <Zap v-if="isTorchOn" class="w-3.5 h-3.5 fill-current" />
           <ZapOff v-else class="w-3.5 h-3.5 text-slate-400" />
-          <span>{{ isTorchOn ? 'Flash On' : 'Flashlight' }}</span>
+          <span>{{ isTorchOn ? 'Flash On' : 'Flash' }}</span>
         </button>
 
-        <!-- 1x / 2x Zoom Toggle Button (helps scanning small grocery items) -->
+        <!-- 1x / 2x Zoom Toggle Button -->
         <button
           v-if="isZoomSupported"
           @click="toggleZoom"
           class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-900/80 text-emerald-300 border border-emerald-600/40 hover:bg-slate-800 transition shadow-lg backdrop-blur-md"
         >
           <ZoomIn class="w-3.5 h-3.5" />
-          <span>{{ currentZoom > 1 ? `${currentZoom}x Zoom` : '1x Zoom' }}</span>
+          <span>{{ currentZoom > 1 ? `${currentZoom}x` : '1x Zoom' }}</span>
+        </button>
+
+        <!-- Multi-Camera Switcher Button (e.g. main vs ultra-wide lenses) -->
+        <button
+          v-if="hasMultipleCameras"
+          @click="switchCamera"
+          class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-900/80 text-slate-200 border border-slate-700/80 hover:bg-slate-800 transition shadow-lg backdrop-blur-md"
+        >
+          <SwitchCamera class="w-3.5 h-3.5 text-emerald-400" />
+          <span>Switch Lens</span>
         </button>
       </div>
 
@@ -87,14 +97,14 @@
         </div>
 
         <h4 class="text-white font-bold text-lg mb-1">
-          {{ isHttpNonLocal ? 'Live Camera Requires HTTPS' : 'Camera Access Issue' }}
+          {{ isHttpNonLocal ? 'Live Camera Requires HTTPS' : 'Camera Stream Issue' }}
         </h4>
 
         <p class="text-slate-300 text-xs max-w-sm mb-4 leading-relaxed">
           <span v-if="isHttpNonLocal">
             Mobile browsers (iOS Safari & Android Chrome) block live WebRTC video streams over plain HTTP.
             <br /><br />
-            <strong>You can take a photo of the barcode directly using your camera!</strong>
+            <strong>You can take a photo of the barcode directly using your phone's camera!</strong>
           </span>
           <span v-else>
             {{ cameraError }}
@@ -104,13 +114,22 @@
         <!-- Primary Native Camera Button (works 100% on iOS & Android over HTTP & HTTPS) -->
         <button
           @click="openNativeCamera"
-          class="w-full max-w-xs py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 mb-3 transition"
+          class="w-full max-w-xs py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 mb-2 transition"
         >
           <Camera class="w-5 h-5" />
           <span>Snap Barcode Photo</span>
         </button>
 
-        <p v-if="isHttpNonLocal" class="text-[11px] text-slate-500 max-w-xs">
+        <div class="flex items-center gap-2">
+          <button
+            @click="startLiveScanner"
+            class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium border border-slate-700 transition"
+          >
+            Retry Live Camera
+          </button>
+        </div>
+
+        <p v-if="isHttpNonLocal" class="text-[11px] text-slate-500 max-w-xs mt-3">
           Tip: Run <code class="text-emerald-400 bg-slate-900 px-1.5 py-0.5 rounded">make run-ssl</code> on your server for live video on mobile!
         </p>
       </div>
@@ -193,12 +212,14 @@ import {
   Zap,
   ZapOff,
   ZoomIn,
+  SwitchCamera,
 } from 'lucide-vue-next'
 import { playBeepSound } from '../utils/dateParser'
 import {
   cleanBarcode,
   getOptimalQrboxDimensions,
   optimizeImageForBarcode,
+  formatCameraErrorMessage,
 } from '../utils/barcodeHelper'
 
 const emit = defineEmits(['detected', 'close'])
@@ -214,6 +235,10 @@ const isTorchSupported = ref(false)
 const isTorchOn = ref(false)
 const isZoomSupported = ref(false)
 const currentZoom = ref(1)
+
+const hasMultipleCameras = ref(false)
+const availableCameras = ref([])
+const currentCameraIndex = ref(0)
 
 const nativeCameraInputRef = ref(null)
 const filePickerRef = ref(null)
@@ -243,6 +268,23 @@ function checkEnvironmentAndStart() {
   startLiveScanner()
 }
 
+function createScannerInstance() {
+  return new Html5Qrcode('barcode-reader', {
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.QR_CODE,
+    ],
+    experimentalFeatures: {
+      useBarCodeDetectorIfSupported: true,
+    },
+    verbose: false,
+  })
+}
+
 function getActiveVideoTrack() {
   const videoEl = document.querySelector('#barcode-reader video')
   if (videoEl && videoEl.srcObject) {
@@ -265,6 +307,19 @@ function checkTrackCapabilities() {
       currentZoom.value = track.getSettings ? track.getSettings().zoom || 1 : 1
     }
   }, 400)
+}
+
+async function onScannerStarted() {
+  checkTrackCapabilities()
+  try {
+    const devices = await Html5Qrcode.getCameras()
+    if (devices && devices.length > 1) {
+      availableCameras.value = devices
+      hasMultipleCameras.value = true
+    }
+  } catch (e) {
+    // Non-fatal if camera enumeration fails
+  }
 }
 
 async function toggleTorch() {
@@ -297,80 +352,115 @@ async function toggleZoom() {
   }
 }
 
-async function startLiveScanner() {
-  cameraError.value = null
+async function switchCamera() {
+  if (availableCameras.value.length < 2) return
+  currentCameraIndex.value = (currentCameraIndex.value + 1) % availableCameras.value.length
+  const deviceId = availableCameras.value[currentCameraIndex.value].id
+
+  await stopScanner()
   try {
-    if (!html5QrCode) {
-      // Enable native hardware BarcodeDetector API if supported (GPU/Vision acceleration)
-      html5QrCode = new Html5Qrcode('barcode-reader', {
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.QR_CODE,
-        ],
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true,
-        },
-        verbose: false,
-      })
-    }
-
-    // High definition 1080p stream with continuous autofocus for crisp 1D barcode lines
-    const cameraConstraints = {
-      facingMode: { ideal: 'environment' },
-      width: { min: 1280, ideal: 1920 },
-      height: { min: 720, ideal: 1080 },
-      focusMode: { ideal: 'continuous' },
-    }
-
+    html5QrCode = createScannerInstance()
     await html5QrCode.start(
-      cameraConstraints,
+      deviceId,
       {
-        fps: 20, // 20 frames per second catches sharp moments during natural hand tremors
+        fps: 20,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
           return getOptimalQrboxDimensions(viewfinderWidth, viewfinderHeight)
         },
         aspectRatio: 1.0,
       },
-      (decodedText) => {
-        handleBarcodeFound(decodedText)
-      },
-      () => {
-        // Frame skipped without barcode - normal
-      }
+      handleBarcodeFound,
+      () => {}
     )
-
     isScanningLive.value = true
     checkTrackCapabilities()
   } catch (err) {
-    console.warn('Live scanner start error with HD constraints, attempting fallback:', err)
-    // Fallback to simpler constraints if device rejects HD
-    try {
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 15,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            return getOptimalQrboxDimensions(viewfinderWidth, viewfinderHeight)
-          },
-          aspectRatio: 1.0,
+    console.warn('Switch camera error:', err)
+  }
+}
+
+async function startLiveScanner() {
+  cameraError.value = null
+
+  // Ensure any previous stream or state transition is stopped cleanly
+  await stopScanner()
+
+  // Tier 1: Start with HD videoConstraints inside configuration (arg 2)
+  try {
+    html5QrCode = createScannerInstance()
+    await html5QrCode.start(
+      { facingMode: 'environment' },
+      {
+        fps: 20,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          return getOptimalQrboxDimensions(viewfinderWidth, viewfinderHeight)
         },
-        (decodedText) => {
-          handleBarcodeFound(decodedText)
+        aspectRatio: 1.0,
+        videoConstraints: {
+          facingMode: 'environment',
+          width: { min: 1280, ideal: 1920 },
+          height: { min: 720, ideal: 1080 },
         },
-        () => {}
-      )
-      isScanningLive.value = true
-      checkTrackCapabilities()
-    } catch (fallbackErr) {
-      console.warn('Fallback scanner also failed:', fallbackErr)
-      isScanningLive.value = false
-      cameraError.value =
-        'Could not access the live camera stream. You can snap a photo with your camera instead!'
-    }
+      },
+      handleBarcodeFound,
+      () => {}
+    )
+
+    isScanningLive.value = true
+    onScannerStarted()
+    return
+  } catch (tier1Err) {
+    console.warn('Tier 1 HD live camera failed, trying Tier 2 basic environment:', tier1Err)
+  }
+
+  // Tier 2: Try basic environment camera without resolution constraints
+  try {
+    await stopScanner()
+    html5QrCode = createScannerInstance()
+    await html5QrCode.start(
+      { facingMode: 'environment' },
+      {
+        fps: 15,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          return getOptimalQrboxDimensions(viewfinderWidth, viewfinderHeight)
+        },
+        aspectRatio: 1.0,
+      },
+      handleBarcodeFound,
+      () => {}
+    )
+
+    isScanningLive.value = true
+    onScannerStarted()
+    return
+  } catch (tier2Err) {
+    console.warn('Tier 2 basic environment failed, trying Tier 3 any camera:', tier2Err)
+  }
+
+  // Tier 3: Try user/front camera or default video stream
+  try {
+    await stopScanner()
+    html5QrCode = createScannerInstance()
+    await html5QrCode.start(
+      { facingMode: 'user' },
+      {
+        fps: 15,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          return getOptimalQrboxDimensions(viewfinderWidth, viewfinderHeight)
+        },
+        aspectRatio: 1.0,
+      },
+      handleBarcodeFound,
+      () => {}
+    )
+
+    isScanningLive.value = true
+    onScannerStarted()
+    return
+  } catch (tier3Err) {
+    console.error('All scanner start tiers failed:', tier3Err)
+    isScanningLive.value = false
+    cameraError.value = formatCameraErrorMessage(tier3Err)
   }
 }
 
@@ -427,20 +517,7 @@ async function onFileSelected(e) {
   isProcessingFile.value = true
   try {
     if (!html5QrCode) {
-      html5QrCode = new Html5Qrcode('barcode-reader', {
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.QR_CODE,
-        ],
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true,
-        },
-        verbose: false,
-      })
+      html5QrCode = createScannerInstance()
     }
 
     // Step 1: Optimize photo resolution (downscale from 12-48MP to max 1600px)
