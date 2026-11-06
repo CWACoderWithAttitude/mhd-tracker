@@ -103,7 +103,11 @@ ci-local: ## Run complete CI pipeline locally (lint, tests, coverage, build, sit
 ci-act: ## Run GitHub Actions workflow locally via nektos/act in Docker
 	@if command -v act >/dev/null 2>&1; then \
 		echo "$(CYAN)Running GitHub Actions locally with act...$(RESET)"; \
-		act pull_request -s GITHUB_TOKEN=dummy --container-architecture linux/amd64; \
+		TOKEN_ARG=""; \
+		if [ -n "$$GITHUB_TOKEN" ]; then \
+			TOKEN_ARG="-s GITHUB_TOKEN=$$GITHUB_TOKEN"; \
+		fi; \
+		act pull_request $$TOKEN_ARG --container-architecture linux/amd64; \
 	else \
 		echo "$(YELLOW)act is not installed.$(RESET)"; \
 		echo "To run GitHub Actions locally with Docker, install 'act':"; \
