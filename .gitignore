@@ -25,4 +25,10 @@ frontend/dist/
 certs/
 *.pem
 
+# Coverage and test artifacts
+.coverage
+coverage/
+frontend/coverage/
+site/
+
 

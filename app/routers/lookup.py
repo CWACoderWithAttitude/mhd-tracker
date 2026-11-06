@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.models import ProductCache, Item
+from app.models import Item, ProductCache
 from app.schemas import ProductLookupResponse
 from app.services.openfoodfacts import fetch_open_food_facts
 
@@ -22,15 +23,12 @@ async def lookup_ean(ean: str, db: Session = Depends(get_db)):
             brand=cached.brand,
             category=cached.category,
             image_url=cached.image_url,
-            source="cache"
+            source="cache",
         )
 
     # 2. Check if already entered in items
     existing_item = (
-        db.query(Item)
-        .filter(Item.ean == clean_ean)
-        .order_by(Item.id.desc())
-        .first()
+        db.query(Item).filter(Item.ean == clean_ean).order_by(Item.id.desc()).first()
     )
     if existing_item:
         # Cache for next time
@@ -50,7 +48,7 @@ async def lookup_ean(ean: str, db: Session = Depends(get_db)):
             brand=existing_item.brand,
             category=existing_item.category,
             image_url=existing_item.image_url,
-            source="existing_item"
+            source="existing_item",
         )
 
     # 3. Query Open Food Facts
@@ -72,7 +70,7 @@ async def lookup_ean(ean: str, db: Session = Depends(get_db)):
             brand=off_data.get("brand"),
             category=off_data.get("category"),
             image_url=off_data.get("image_url"),
-            source="openfoodfacts"
+            source="openfoodfacts",
         )
 
     return ProductLookupResponse(
@@ -82,5 +80,5 @@ async def lookup_ean(ean: str, db: Session = Depends(get_db)):
         brand=None,
         category="Pantry",
         image_url=None,
-        source="not_found"
+        source="not_found",
     )

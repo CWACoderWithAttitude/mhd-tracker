@@ -1,12 +1,20 @@
 <template>
-  <div class="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between backdrop-blur-md">
+  <div
+    class="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between backdrop-blur-md"
+  >
     <!-- Header -->
-    <div class="flex items-center justify-between p-4 bg-slate-900/90 border-b border-slate-800 text-white z-10">
+    <div
+      class="flex items-center justify-between p-4 bg-slate-900/90 border-b border-slate-800 text-white z-10"
+    >
       <div class="flex items-center gap-2">
         <Calendar class="w-6 h-6 text-sky-400" />
         <div>
-          <h3 class="font-semibold text-lg leading-tight">Scan MHD / Expiration Date</h3>
-          <p class="text-xs text-slate-400">OCR recognition for packaging date</p>
+          <h3 class="font-semibold text-lg leading-tight">
+            Scan MHD / Expiration Date
+          </h3>
+          <p class="text-xs text-slate-400">
+            OCR recognition for packaging date
+          </p>
         </div>
       </div>
       <button
@@ -18,7 +26,9 @@
     </div>
 
     <!-- Scanner Viewport Area -->
-    <div class="relative flex-1 flex flex-col items-center justify-center overflow-hidden bg-black">
+    <div
+      class="relative flex-1 flex flex-col items-center justify-center overflow-hidden bg-black"
+    >
       <!-- Live Video element -->
       <video
         v-if="isScanningLive"
@@ -30,45 +40,76 @@
       ></video>
 
       <!-- Reticle Box for Date Crop (shown during live scanning) -->
-      <div v-if="isScanningLive" class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+      <div
+        v-if="isScanningLive"
+        class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
+      >
         <div
           class="w-72 h-28 border-2 border-sky-400/90 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] flex items-center justify-center"
         >
           <!-- Corner brackets -->
-          <div class="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-sky-300"></div>
-          <div class="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-sky-300"></div>
-          <div class="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-sky-300"></div>
-          <div class="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-sky-300"></div>
+          <div
+            class="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-sky-300"
+          ></div>
+          <div
+            class="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-sky-300"
+          ></div>
+          <div
+            class="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-sky-300"
+          ></div>
+          <div
+            class="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-sky-300"
+          ></div>
 
-          <div v-if="isProcessing" class="flex items-center gap-2 bg-black/70 px-3 py-1.5 rounded-full text-xs text-sky-200">
+          <div
+            v-if="isProcessing"
+            class="flex items-center gap-2 bg-black/70 px-3 py-1.5 rounded-full text-xs text-sky-200"
+          >
             <Loader2 class="w-3.5 h-3.5 animate-spin text-sky-400" />
             <span>Reading date...</span>
           </div>
-          <div v-else class="text-center text-xs text-sky-200/90 font-medium px-2">
+          <div
+            v-else
+            class="text-center text-xs text-sky-200/90 font-medium px-2"
+          >
             Center date stamp here
           </div>
         </div>
 
         <p class="mt-4 text-xs text-slate-300 text-center max-w-xs px-4">
-          e.g. <span class="text-sky-300 font-mono">15.08.2025</span>, <span class="text-sky-300 font-mono">24/11/26</span> or <span class="text-sky-300 font-mono">09/2026</span>
+          e.g. <span class="text-sky-300 font-mono">15.08.2025</span>,
+          <span class="text-sky-300 font-mono">24/11/26</span> or
+          <span class="text-sky-300 font-mono">09/2026</span>
         </p>
       </div>
 
       <!-- Insecure Context / Camera Access Fallback UI -->
-      <div v-if="cameraError" class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center z-20">
-        <div class="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 mb-3">
+      <div
+        v-if="cameraError"
+        class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center z-20"
+      >
+        <div
+          class="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 mb-3"
+        >
           <Calendar class="w-8 h-8" />
         </div>
 
         <h4 class="text-white font-bold text-lg mb-1">
-          {{ isHttpNonLocal ? 'Live Camera Requires HTTPS' : 'Camera Access Issue' }}
+          {{
+            isHttpNonLocal
+              ? "Live Camera Requires HTTPS"
+              : "Camera Access Issue"
+          }}
         </h4>
 
         <p class="text-slate-300 text-xs max-w-sm mb-4 leading-relaxed">
           <span v-if="isHttpNonLocal">
             Mobile browsers disable live video over HTTP.
             <br /><br />
-            <strong>You can take a photo of the date stamp directly using your phone's camera!</strong>
+            <strong
+              >You can take a photo of the date stamp directly using your
+              phone's camera!</strong
+            >
           </span>
           <span v-else>
             {{ cameraError }}
@@ -85,7 +126,11 @@
         </button>
 
         <p v-if="isHttpNonLocal" class="text-[11px] text-slate-500 max-w-xs">
-          Tip: Run <code class="text-sky-400 bg-slate-900 px-1.5 py-0.5 rounded">make run-ssl</code> for live video scanning on your mobile!
+          Tip: Run
+          <code class="text-sky-400 bg-slate-900 px-1.5 py-0.5 rounded"
+            >make run-ssl</code
+          >
+          for live video scanning on your mobile!
         </p>
       </div>
 
@@ -95,12 +140,20 @@
         class="absolute bottom-6 inset-x-4 bg-emerald-950/95 border border-emerald-500 rounded-xl p-3 shadow-2xl z-20 flex items-center justify-between animate-bounce"
       >
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-emerald-600/30 text-emerald-400 flex items-center justify-center font-bold text-lg">
+          <div
+            class="w-10 h-10 rounded-lg bg-emerald-600/30 text-emerald-400 flex items-center justify-center font-bold text-lg"
+          >
             ✓
           </div>
           <div>
-            <div class="text-xs text-emerald-300 font-semibold uppercase tracking-wider">Date Detected</div>
-            <div class="text-lg font-bold text-white font-mono">{{ detectedDate }}</div>
+            <div
+              class="text-xs text-emerald-300 font-semibold uppercase tracking-wider"
+            >
+              Date Detected
+            </div>
+            <div class="text-lg font-bold text-white font-mono">
+              {{ detectedDate }}
+            </div>
           </div>
         </div>
 
@@ -144,7 +197,9 @@
     />
 
     <!-- Bottom Controls -->
-    <div class="p-4 bg-slate-900/90 border-t border-slate-800 flex flex-col gap-3 z-10 max-w-md mx-auto w-full">
+    <div
+      class="p-4 bg-slate-900/90 border-t border-slate-800 flex flex-col gap-3 z-10 max-w-md mx-auto w-full"
+    >
       <div class="grid grid-cols-2 gap-2">
         <!-- Native Camera Snap Button -->
         <button
@@ -153,7 +208,7 @@
           class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-95 disabled:opacity-50 text-white font-bold text-xs transition shadow"
         >
           <Camera class="w-4 h-4" />
-          <span>{{ isProcessing ? 'Scanning...' : 'Take Photo' }}</span>
+          <span>{{ isProcessing ? "Scanning..." : "Take Photo" }}</span>
         </button>
 
         <!-- Choose from Gallery -->
@@ -168,7 +223,9 @@
 
       <!-- Manual Date Picker Fallback -->
       <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
-        <span class="text-xs text-slate-400 whitespace-nowrap">Or pick date:</span>
+        <span class="text-xs text-slate-400 whitespace-nowrap"
+          >Or pick date:</span
+        >
         <input
           v-model="manualInputDate"
           type="date"
@@ -187,239 +244,244 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { createWorker } from 'tesseract.js'
-import { Calendar, X, Camera, UploadCloud, Loader2 } from 'lucide-vue-next'
-import { parseExpirationDate, playBeepSound } from '../utils/dateParser'
-import { formatCameraErrorMessage } from '../utils/barcodeHelper'
+import { ref, onMounted, onUnmounted } from "vue";
+import { createWorker } from "tesseract.js";
+import { Calendar, X, Camera, UploadCloud, Loader2 } from "lucide-vue-next";
+import { parseExpirationDate, playBeepSound } from "../utils/dateParser";
+import { formatCameraErrorMessage } from "../utils/barcodeHelper";
 
+const emit = defineEmits(["detected", "close"]);
 
-const emit = defineEmits(['detected', 'close'])
+const videoEl = ref(null);
+const canvasEl = ref(null);
+const nativeCameraInputRef = ref(null);
+const filePickerRef = ref(null);
 
-const videoEl = ref(null)
-const canvasEl = ref(null)
-const nativeCameraInputRef = ref(null)
-const filePickerRef = ref(null)
+const isScanningLive = ref(false);
+const isProcessing = ref(false);
+const cameraError = ref(null);
+const isHttpNonLocal = ref(false);
+const detectedDate = ref(null);
+const rawOcrText = ref("");
+const manualInputDate = ref("");
 
-const isScanningLive = ref(false)
-const isProcessing = ref(false)
-const cameraError = ref(null)
-const isHttpNonLocal = ref(false)
-const detectedDate = ref(null)
-const rawOcrText = ref('')
-const manualInputDate = ref('')
-
-let stream = null
-let tesseractWorker = null
-let autoScanInterval = null
+let stream = null;
+let tesseractWorker = null;
+let autoScanInterval = null;
 
 onMounted(async () => {
-  checkEnvironmentAndStart()
-  await initWorker()
-})
+  checkEnvironmentAndStart();
+  await initWorker();
+});
 
 onUnmounted(async () => {
-  if (autoScanInterval) clearInterval(autoScanInterval)
-  stopCamera()
+  if (autoScanInterval) clearInterval(autoScanInterval);
+  stopCamera();
   if (tesseractWorker) {
     try {
-      await tesseractWorker.terminate()
+      await tesseractWorker.terminate();
     } catch (e) {
-      console.warn('Worker terminate error:', e)
+      console.warn("Worker terminate error:", e);
     }
   }
-})
+});
 
 function checkEnvironmentAndStart() {
-  const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  const hasMediaDevices = !!(navigator?.mediaDevices?.getUserMedia)
+  const isSecure =
+    window.isSecureContext ||
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+  const hasMediaDevices = !!navigator?.mediaDevices?.getUserMedia;
 
   if (!isSecure || !hasMediaDevices) {
-    isHttpNonLocal.value = true
-    cameraError.value = 'Live video is disabled by your browser because connection is not HTTPS.'
-    return
+    isHttpNonLocal.value = true;
+    cameraError.value =
+      "Live video is disabled by your browser because connection is not HTTPS.";
+    return;
   }
 
-  startLiveCamera()
+  startLiveCamera();
 }
 
 async function initWorker() {
   try {
-    tesseractWorker = await createWorker('deu+eng', 1, {
+    tesseractWorker = await createWorker("deu+eng", 1, {
       logger: (m) => {},
-    })
+    });
     await tesseractWorker.setParameters({
-      tessedit_char_whitelist: '0123456789./- :MHDBEXPBbestbeforeMhdExpJanFebMarAprMaiJunJulAugSepOktNovDez',
-    })
+      tessedit_char_whitelist:
+        "0123456789./- :MHDBEXPBbestbeforeMhdExpJanFebMarAprMaiJunJulAugSepOktNovDez",
+    });
   } catch (err) {
-    console.error('Failed to init Tesseract worker:', err)
+    console.error("Failed to init Tesseract worker:", err);
   }
 }
 
 async function startLiveCamera() {
-  cameraError.value = null
-  stopCamera()
+  cameraError.value = null;
+  stopCamera();
 
   function attachStreamAndScan(activeStream) {
-    stream = activeStream
-    isScanningLive.value = true
+    stream = activeStream;
+    isScanningLive.value = true;
     if (videoEl.value) {
-      videoEl.value.srcObject = stream
+      videoEl.value.srcObject = stream;
     }
 
-    if (autoScanInterval) clearInterval(autoScanInterval)
+    if (autoScanInterval) clearInterval(autoScanInterval);
     autoScanInterval = setInterval(() => {
       if (!isProcessing.value && !detectedDate.value) {
-        captureAndOcr()
+        captureAndOcr();
       }
-    }, 2500)
+    }, 2500);
   }
 
   // Tier 1: HD environment camera
   try {
     const s = await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: { ideal: 'environment' },
+        facingMode: { ideal: "environment" },
         width: { ideal: 1920, min: 1280 },
         height: { ideal: 1080, min: 720 },
       },
-    })
-    attachStreamAndScan(s)
-    return
+    });
+    attachStreamAndScan(s);
+    return;
   } catch (tier1Err) {
-    console.warn('OCR camera tier 1 failed, trying tier 2:', tier1Err)
+    console.warn("OCR camera tier 1 failed, trying tier 2:", tier1Err);
   }
 
   // Tier 2: Basic environment camera
   try {
     const s = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
-    })
-    attachStreamAndScan(s)
-    return
+      video: { facingMode: "environment" },
+    });
+    attachStreamAndScan(s);
+    return;
   } catch (tier2Err) {
-    console.warn('OCR camera tier 2 failed, trying tier 3:', tier2Err)
+    console.warn("OCR camera tier 2 failed, trying tier 3:", tier2Err);
   }
 
   // Tier 3: Any video device
   try {
     const s = await navigator.mediaDevices.getUserMedia({
       video: true,
-    })
-    attachStreamAndScan(s)
-    return
+    });
+    attachStreamAndScan(s);
+    return;
   } catch (tier3Err) {
-    console.error('All OCR camera tiers failed:', tier3Err)
-    isScanningLive.value = false
-    cameraError.value = formatCameraErrorMessage(tier3Err)
+    console.error("All OCR camera tiers failed:", tier3Err);
+    isScanningLive.value = false;
+    cameraError.value = formatCameraErrorMessage(tier3Err);
   }
 }
 
-
 function stopCamera() {
-  isScanningLive.value = false
+  isScanningLive.value = false;
   if (stream) {
-    stream.getTracks().forEach((track) => track.stop())
-    stream = null
+    stream.getTracks().forEach((track) => track.stop());
+    stream = null;
   }
 }
 
 function openNativeCamera() {
   if (nativeCameraInputRef.value) {
-    nativeCameraInputRef.value.click()
+    nativeCameraInputRef.value.click();
   }
 }
 
 function openFilePicker() {
   if (filePickerRef.value) {
-    filePickerRef.value.click()
+    filePickerRef.value.click();
   }
 }
 
 async function captureAndOcr() {
-  if (!videoEl.value || !tesseractWorker || isProcessing.value) return
-  if (videoEl.value.videoWidth === 0) return
+  if (!videoEl.value || !tesseractWorker || isProcessing.value) return;
+  if (videoEl.value.videoWidth === 0) return;
 
-  isProcessing.value = true
+  isProcessing.value = true;
   try {
-    const video = videoEl.value
-    const canvas = canvasEl.value
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    const video = videoEl.value;
+    const canvas = canvasEl.value;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-    const vw = video.videoWidth
-    const vh = video.videoHeight
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
 
-    const cropW = Math.floor(vw * 0.65)
-    const cropH = Math.floor(vh * 0.28)
-    const cropX = Math.floor((vw - cropW) / 2)
-    const cropY = Math.floor((vh - cropH) / 2)
+    const cropW = Math.floor(vw * 0.65);
+    const cropH = Math.floor(vh * 0.28);
+    const cropX = Math.floor((vw - cropW) / 2);
+    const cropY = Math.floor((vh - cropH) / 2);
 
-    canvas.width = cropW
-    canvas.height = cropH
+    canvas.width = cropW;
+    canvas.height = cropH;
 
-    ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+    ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
     // Preprocessing: High contrast grayscale
-    const imgData = ctx.getImageData(0, 0, cropW, cropH)
-    const data = imgData.data
+    const imgData = ctx.getImageData(0, 0, cropW, cropH);
+    const data = imgData.data;
     for (let i = 0; i < data.length; i += 4) {
-      const avg = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114
-      const adjusted = avg > 120 ? 255 : avg < 80 ? 0 : avg
-      data[i] = adjusted
-      data[i + 1] = adjusted
-      data[i + 2] = adjusted
+      const avg = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      const adjusted = avg > 120 ? 255 : avg < 80 ? 0 : avg;
+      data[i] = adjusted;
+      data[i + 1] = adjusted;
+      data[i + 2] = adjusted;
     }
-    ctx.putImageData(imgData, 0, 0)
+    ctx.putImageData(imgData, 0, 0);
 
-    const { data: result } = await tesseractWorker.recognize(canvas)
-    const text = result.text.trim()
-    rawOcrText.value = text
+    const { data: result } = await tesseractWorker.recognize(canvas);
+    const text = result.text.trim();
+    rawOcrText.value = text;
 
-    const parsed = parseExpirationDate(text)
+    const parsed = parseExpirationDate(text);
     if (parsed) {
-      detectedDate.value = parsed
-      playBeepSound()
+      detectedDate.value = parsed;
+      playBeepSound();
     }
   } catch (err) {
-    console.error('OCR processing error:', err)
+    console.error("OCR processing error:", err);
   } finally {
-    isProcessing.value = false
+    isProcessing.value = false;
   }
 }
 
 async function onFileSelected(e) {
-  const file = e.target.files?.[0]
-  if (!file) return
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-  isProcessing.value = true
+  isProcessing.value = true;
   try {
-    if (!tesseractWorker) await initWorker()
-    const { data: result } = await tesseractWorker.recognize(file)
-    const parsed = parseExpirationDate(result.text)
+    if (!tesseractWorker) await initWorker();
+    const { data: result } = await tesseractWorker.recognize(file);
+    const parsed = parseExpirationDate(result.text);
     if (parsed) {
-      detectedDate.value = parsed
-      playBeepSound()
+      detectedDate.value = parsed;
+      playBeepSound();
     } else {
-      alert(`Could not extract date from photo. Text found: "${result.text.slice(0, 80)}"`)
+      alert(
+        `Could not extract date from photo. Text found: "${result.text.slice(0, 80)}"`,
+      );
     }
   } catch (err) {
-    alert('Error reading image file for OCR.')
+    alert("Error reading image file for OCR.");
   } finally {
-    isProcessing.value = false
-    e.target.value = ''
+    isProcessing.value = false;
+    e.target.value = "";
   }
 }
 
 function confirmDate(dateStr) {
   if (dateStr) {
-    playBeepSound()
-    stopCamera()
-    emit('detected', dateStr)
+    playBeepSound();
+    stopCamera();
+    emit("detected", dateStr);
   }
 }
 
 function closeModal() {
-  stopCamera()
-  emit('close')
+  stopCamera();
+  emit("close");
 }
 </script>
