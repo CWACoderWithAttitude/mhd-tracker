@@ -1,13 +1,12 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)
 
 OPEN_FOOD_FACTS_URL = "https://world.openfoodfacts.org/api/v2/product/{ean}.json"
-HEADERS = {
-    "User-Agent": "MHDTracker - Python/FastAPI/HomeLab - Version 0.1"
-}
+HEADERS = {"User-Agent": "MHDTracker - Python/FastAPI/HomeLab - Version 0.1"}
 
 
 async def fetch_open_food_facts(ean: str) -> Optional[Dict[str, Any]]:
@@ -24,7 +23,9 @@ async def fetch_open_food_facts(ean: str) -> Optional[Dict[str, Any]]:
         async with httpx.AsyncClient(timeout=4.0) as client:
             response = await client.get(url, headers=HEADERS)
             if response.status_code != 200:
-                logger.info(f"OpenFoodFacts returned status {response.status_code} for EAN {clean_ean}")
+                logger.info(
+                    f"OpenFoodFacts returned status {response.status_code} for EAN {clean_ean}"
+                )
                 return None
 
             data = response.json()
@@ -43,19 +44,35 @@ async def fetch_open_food_facts(ean: str) -> Optional[Dict[str, Any]]:
                 brand = brand.split(",")[0].strip()
 
             image_url = product.get("image_front_url") or product.get("image_url")
-            
+
             # Categories mapping
             categories_tags = product.get("categories_tags", [])
             category = "Pantry"
             if categories_tags:
                 first_cat = categories_tags[0].lower()
-                if "dairy" in first_cat or "milch" in first_cat or "cheese" in first_cat:
+                if (
+                    "dairy" in first_cat
+                    or "milch" in first_cat
+                    or "cheese" in first_cat
+                ):
                     category = "Dairy"
-                elif "meat" in first_cat or "fleisch" in first_cat or "wurst" in first_cat:
+                elif (
+                    "meat" in first_cat
+                    or "fleisch" in first_cat
+                    or "wurst" in first_cat
+                ):
                     category = "Meat"
-                elif "beverage" in first_cat or "getraenk" in first_cat or "drink" in first_cat:
+                elif (
+                    "beverage" in first_cat
+                    or "getraenk" in first_cat
+                    or "drink" in first_cat
+                ):
                     category = "Drinks"
-                elif "fruit" in first_cat or "vegetable" in first_cat or "gemuese" in first_cat:
+                elif (
+                    "fruit" in first_cat
+                    or "vegetable" in first_cat
+                    or "gemuese" in first_cat
+                ):
                     category = "Produce"
                 elif "frozen" in first_cat or "tiefkuehl" in first_cat:
                     category = "Frozen"
@@ -68,7 +85,7 @@ async def fetch_open_food_facts(ean: str) -> Optional[Dict[str, Any]]:
                 "brand": brand,
                 "category": category,
                 "image_url": image_url,
-                "source": "openfoodfacts"
+                "source": "openfoodfacts",
             }
     except Exception as e:
         logger.warning(f"Error fetching from Open Food Facts for EAN {clean_ean}: {e}")

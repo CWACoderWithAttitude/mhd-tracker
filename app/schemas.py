@@ -1,5 +1,6 @@
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -13,7 +14,6 @@ class ItemBase(BaseModel):
     location: Optional[str] = "Fridge"
     notes: Optional[str] = None
     image_url: Optional[str] = None
-
 
 
 class ItemCreate(ItemBase):

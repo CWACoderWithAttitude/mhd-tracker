@@ -2,9 +2,12 @@
 Convenience script to populate sample grocery items with varying expiration dates.
 Run: uv run python seed_demo.py
 """
+
 from datetime import date, timedelta
-from app.database import SessionLocal, Base, engine
+
+from app.database import Base, SessionLocal, engine
 from app.models import Item
+
 
 def seed():
     Base.metadata.create_all(bind=engine)
@@ -22,7 +25,7 @@ def seed():
             "category": "Dairy",
             "location": "Fridge",
             "notes": "Door shelf",
-            "status": "active"
+            "status": "active",
         },
         {
             "name": "Greek Yogurt 500g",
@@ -33,7 +36,7 @@ def seed():
             "category": "Dairy",
             "location": "Fridge",
             "notes": "Middle compartment",
-            "status": "active"
+            "status": "active",
         },
         {
             "name": "Nutella Hazelnut Spread 450g",
@@ -44,7 +47,7 @@ def seed():
             "category": "Pantry",
             "location": "Pantry",
             "image_url": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.879.400.jpg",
-            "status": "active"
+            "status": "active",
         },
         {
             "name": "Sliced Gouda Cheese",
@@ -55,7 +58,7 @@ def seed():
             "category": "Dairy",
             "location": "Fridge",
             "notes": "Check smell before eating",
-            "status": "active"
+            "status": "active",
         },
     ]
 
@@ -66,6 +69,7 @@ def seed():
     db.commit()
     print(f"Successfully seeded {len(sample_items)} sample items into mhd_tracker.db!")
     db.close()
+
 
 if __name__ == "__main__":
     seed()

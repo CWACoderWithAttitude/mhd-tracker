@@ -1,12 +1,13 @@
 from datetime import date
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Item, ProductCache
-from app.schemas import ItemCreate, ItemResponse, ItemUpdate, DashboardStats
+from app.schemas import DashboardStats, ItemCreate, ItemResponse, ItemUpdate
 
 router = APIRouter(prefix="/api/items", tags=["Items"])
 
@@ -60,8 +61,12 @@ def get_stats(db: Session = Depends(get_db)):
 
 @router.get("", response_model=List[ItemResponse])
 def list_items(
-    status: Optional[str] = Query("active", description="Filter by status (active, consumed, discarded, all)"),
-    search: Optional[str] = Query(None, description="Search term for name, brand, or ean"),
+    status: Optional[str] = Query(
+        "active", description="Filter by status (active, consumed, discarded, all)"
+    ),
+    search: Optional[str] = Query(
+        None, description="Search term for name, brand, or ean"
+    ),
     category: Optional[str] = Query(None, description="Filter by category"),
     location: Optional[str] = Query(None, description="Filter by location"),
     db: Session = Depends(get_db),

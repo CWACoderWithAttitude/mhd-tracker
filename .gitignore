@@ -25,6 +25,12 @@ frontend/dist/
 certs/
 *.pem
 
+# Coverage and test artifacts
+.coverage
+coverage/
+frontend/coverage/
+site/
+
 
 frontend/coverage/
 #site/coverage/frontend/barcodeHelper.js.html
