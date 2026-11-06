@@ -1,6 +1,7 @@
-from datetime import datetime, timezone, date
-from typing import Optional
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, Date, DateTime, Integer, String, Text
+
 from app.database import Base
 
 
@@ -21,7 +22,9 @@ class Item(Base):
     location = Column(String(100), nullable=True, default="Fridge")
     notes = Column(Text, nullable=True)
     image_url = Column(String(1024), nullable=True)
-    status = Column(String(50), default="active", index=True)  # active, consumed, discarded
+    status = Column(
+        String(50), default="active", index=True
+    )  # active, consumed, discarded
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -35,4 +38,3 @@ class ProductCache(Base):
     category = Column(String(100), nullable=True)
     image_url = Column(String(1024), nullable=True)
     fetched_at = Column(DateTime, default=utc_now, nullable=False)
-
