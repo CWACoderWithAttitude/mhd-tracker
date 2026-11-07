@@ -5,6 +5,13 @@
 
 ---
 
+## 0. # Guardrails: Secret Management
+
+1. **Credentials:**
+   - **CRITICAL:** Do NOT write, hardcode, or commit plain-text API keys, passwords, bearer tokens, or secret credentials under any circumstances.
+   - **Enforcement:** Always use environment variables (`.env`) or a secure keychain system.
+   - **Action Blocked:** If code changes introduce string literals resembling keys (e.g., `sk_live_...`, `AIzaSy...`), reject the file modification and alert the user.
+
 ## 1. Tooling & Package Management
 
 1. **Python / Backend:**

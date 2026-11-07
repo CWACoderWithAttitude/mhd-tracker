@@ -26,3 +26,7 @@ certs/
 *.pem
 
 
+frontend/coverage/
+#site/coverage/frontend/barcodeHelper.js.html
+site/
+.coverage
