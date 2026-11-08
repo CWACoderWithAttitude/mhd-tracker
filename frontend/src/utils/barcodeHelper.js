@@ -133,6 +133,54 @@ export async function optimizeImageForBarcode(file, maxDimension = 1600) {
 }
 
 /**
+ * Rotate an image File by specified degrees (e.g. 90, 180, 270) for vertical barcodes.
+ */
+export async function rotateImageFile(file, degrees = 90) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read image file"));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        if (degrees === 90 || degrees === 270) {
+          canvas.width = img.height;
+          canvas.height = img.width;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+
+        const ctx = canvas.getContext("2d");
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((degrees * Math.PI) / 180);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(
+                new File([blob], file.name || "rotated.jpg", {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                }),
+              );
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          0.92,
+        );
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Format camera errors into user-friendly and actionable instructions.
  */
 export function formatCameraErrorMessage(err) {
