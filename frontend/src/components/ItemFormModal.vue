@@ -1,20 +1,28 @@
 <template>
-  <div class="fixed inset-0 z-40 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
+  <div
+    class="fixed inset-0 z-40 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm"
+  >
     <div
       class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-200"
     >
       <!-- Header -->
-      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 sticky top-0 z-10">
+      <div
+        class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 sticky top-0 z-10"
+      >
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+          <div
+            class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold"
+          >
             <PackagePlus v-if="!itemData.id" class="w-5 h-5" />
             <Edit3 v-else class="w-5 h-5" />
           </div>
           <div>
             <h2 class="text-lg font-bold text-white leading-tight">
-              {{ itemData.id ? 'Edit Item' : 'Add to Inventory' }}
+              {{ itemData.id ? "Edit Item" : "Add to Inventory" }}
             </h2>
-            <p class="text-xs text-slate-400">Track best-before date and location</p>
+            <p class="text-xs text-slate-400">
+              Track best-before date and location
+            </p>
           </div>
         </div>
         <button
@@ -26,14 +34,18 @@
       </div>
 
       <!-- Quick Action Scanning Bar -->
-      <div class="p-3 bg-slate-950/60 border-b border-slate-800/80 grid grid-cols-2 gap-2">
+      <div
+        class="p-3 bg-slate-950/60 border-b border-slate-800/80 grid grid-cols-2 gap-2"
+      >
         <button
           type="button"
           @click="openBarcodeScanner"
           class="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-emerald-950/60 border border-emerald-600/40 text-emerald-300 hover:bg-emerald-900/40 text-xs font-semibold transition active:scale-95"
         >
           <Barcode class="w-4 h-4 text-emerald-400" />
-          <span>{{ itemData.ean ? 'Re-scan Barcode' : 'Scan Barcode (EAN)' }}</span>
+          <span>{{
+            itemData.ean ? "Re-scan Barcode" : "Scan Barcode (EAN)"
+          }}</span>
         </button>
 
         <button
@@ -42,28 +54,51 @@
           class="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-sky-950/60 border border-sky-600/40 text-sky-300 hover:bg-sky-900/40 text-xs font-semibold transition active:scale-95"
         >
           <Calendar class="w-4 h-4 text-sky-400" />
-          <span>{{ itemData.expiration_date ? 'Re-scan MHD' : 'Scan Date (OCR)' }}</span>
+          <span>{{
+            itemData.expiration_date ? "Re-scan MHD" : "Scan Date (OCR)"
+          }}</span>
         </button>
       </div>
 
       <!-- Scrollable Form Body -->
       <div class="p-4 overflow-y-auto space-y-4 flex-1">
         <!-- Scanned Product Preview Card if Image/EAN is available -->
-        <div v-if="itemData.image_url || isLookingUpEan" class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-3">
-          <div class="w-14 h-14 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-            <img v-if="itemData.image_url" :src="itemData.image_url" alt="Product" class="w-full h-full object-contain" />
-            <Loader2 v-else-if="isLookingUpEan" class="w-6 h-6 animate-spin text-emerald-400" />
+        <div
+          v-if="itemData.image_url || isLookingUpEan"
+          class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-3"
+        >
+          <div
+            class="w-14 h-14 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0"
+          >
+            <img
+              v-if="itemData.image_url"
+              :src="itemData.image_url"
+              alt="Product"
+              class="w-full h-full object-contain"
+            />
+            <Loader2
+              v-else-if="isLookingUpEan"
+              class="w-6 h-6 animate-spin text-emerald-400"
+            />
             <Package v-else class="w-6 h-6 text-slate-500" />
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5">
-              <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-mono text-[10px]">
-                EAN: {{ itemData.ean || 'None' }}
+              <span
+                class="text-xs px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-mono text-[10px]"
+              >
+                EAN: {{ itemData.ean || "None" }}
               </span>
-              <span v-if="lookupSource" class="text-[10px] text-slate-400">({{ lookupSource }})</span>
+              <span v-if="lookupSource" class="text-[10px] text-slate-400"
+                >({{ lookupSource }})</span
+              >
             </div>
-            <p class="text-sm font-semibold text-white truncate mt-0.5">{{ itemData.name || 'Lookup in progress...' }}</p>
-            <p class="text-xs text-slate-400 truncate">{{ itemData.brand || 'No brand specified' }}</p>
+            <p class="text-sm font-semibold text-white truncate mt-0.5">
+              {{ itemData.name || "Lookup in progress..." }}
+            </p>
+            <p class="text-xs text-slate-400 truncate">
+              {{ itemData.brand || "No brand specified" }}
+            </p>
           </div>
         </div>
 
@@ -84,7 +119,9 @@
         <!-- Brand & Barcode Grid -->
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Brand</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1"
+              >Brand</label
+            >
             <input
               v-model="itemData.brand"
               type="text"
@@ -93,7 +130,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">EAN Barcode</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1"
+              >EAN Barcode</label
+            >
             <div class="relative">
               <input
                 v-model="itemData.ean"
@@ -130,8 +169,12 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Quantity</label>
-            <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl overflow-hidden">
+            <label class="block text-xs font-medium text-slate-300 mb-1"
+              >Quantity</label
+            >
+            <div
+              class="flex items-center bg-slate-950 border border-slate-700 rounded-xl overflow-hidden"
+            >
               <button
                 type="button"
                 @click="decrementQuantity"
@@ -159,7 +202,9 @@
         <!-- Category & Storage Location -->
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Category</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1"
+              >Category</label
+            >
             <select
               v-model="itemData.category"
               class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
@@ -176,7 +221,9 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Location</label>
+            <label class="block text-xs font-medium text-slate-300 mb-1"
+              >Location</label
+            >
             <select
               v-model="itemData.location"
               class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
@@ -192,7 +239,9 @@
 
         <!-- Optional Notes -->
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Notes (Optional)</label>
+          <label class="block text-xs font-medium text-slate-300 mb-1"
+            >Notes (Optional)</label
+          >
           <input
             v-model="itemData.notes"
             type="text"
@@ -203,7 +252,9 @@
       </div>
 
       <!-- Action Buttons Footer -->
-      <div class="p-4 border-t border-slate-800 bg-slate-900/95 flex items-center gap-3">
+      <div
+        class="p-4 border-t border-slate-800 bg-slate-900/95 flex items-center gap-3"
+      >
         <button
           type="button"
           @click="$emit('close')"
@@ -218,7 +269,7 @@
           class="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm shadow-lg shadow-emerald-950/40 transition active:scale-95 flex items-center justify-center gap-2"
         >
           <Loader2 v-if="isSubmitting" class="w-4 h-4 animate-spin" />
-          <span>{{ itemData.id ? 'Save Changes' : 'Store in Pantry' }}</span>
+          <span>{{ itemData.id ? "Save Changes" : "Store in Pantry" }}</span>
         </button>
       </div>
     </div>
@@ -226,7 +277,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive } from "vue";
 import {
   PackagePlus,
   Edit3,
@@ -237,105 +288,115 @@ import {
   Minus,
   Loader2,
   Package,
-} from 'lucide-vue-next'
+} from "lucide-vue-next";
 
 const props = defineProps({
   initialData: {
     type: Object,
     default: () => ({}),
   },
-})
+});
 
-const emit = defineEmits(['save', 'close', 'openBarcodeScanner', 'openDateScanner'])
+const emit = defineEmits([
+  "save",
+  "close",
+  "openBarcodeScanner",
+  "openDateScanner",
+]);
 
 const itemData = reactive({
   id: props.initialData.id || null,
-  ean: props.initialData.ean || '',
-  name: props.initialData.name || '',
-  brand: props.initialData.brand || '',
-  expiration_date: props.initialData.expiration_date || '',
+  ean: props.initialData.ean || "",
+  name: props.initialData.name || "",
+  brand: props.initialData.brand || "",
+  expiration_date: props.initialData.expiration_date || "",
   quantity: props.initialData.quantity || 1,
-  category: props.initialData.category || 'Pantry',
-  location: props.initialData.location || 'Fridge',
-  notes: props.initialData.notes || '',
-  image_url: props.initialData.image_url || '',
-})
+  category: props.initialData.category || "Pantry",
+  location: props.initialData.location || "Fridge",
+  notes: props.initialData.notes || "",
+  image_url: props.initialData.image_url || "",
+});
 
-const isLookingUpEan = ref(false)
-const lookupSource = ref('')
-const isSubmitting = ref(false)
+const isLookingUpEan = ref(false);
+const lookupSource = ref("");
+const isSubmitting = ref(false);
 
 const isFormValid = computed(() => {
-  return itemData.name.trim().length > 0 && itemData.expiration_date && itemData.quantity >= 1
-})
+  return (
+    itemData.name.trim().length > 0 &&
+    itemData.expiration_date &&
+    itemData.quantity >= 1
+  );
+});
 
 function incrementQuantity() {
-  itemData.quantity++
+  itemData.quantity++;
 }
 
 function decrementQuantity() {
   if (itemData.quantity > 1) {
-    itemData.quantity--
+    itemData.quantity--;
   }
 }
 
 function openBarcodeScanner() {
-  emit('openBarcodeScanner')
+  emit("openBarcodeScanner");
 }
 
 function openDateScanner() {
-  emit('openDateScanner')
+  emit("openDateScanner");
 }
 
 async function triggerLookupIfEanEntered() {
-  if (!itemData.ean || itemData.ean.trim().length < 6) return
-  await lookupBarcode(itemData.ean.trim())
+  if (!itemData.ean || itemData.ean.trim().length < 6) return;
+  await lookupBarcode(itemData.ean.trim());
 }
 
 async function lookupBarcode(barcode) {
-  isLookingUpEan.value = true
-  lookupSource.value = ''
+  isLookingUpEan.value = true;
+  lookupSource.value = "";
   try {
-    const res = await fetch(`/api/lookup/ean/${encodeURIComponent(barcode)}`)
+    const res = await fetch(`/api/lookup/ean/${encodeURIComponent(barcode)}`);
     if (res.ok) {
-      const data = await res.json()
+      const data = await res.json();
       if (data.found) {
-        if (data.name) itemData.name = data.name
-        if (data.brand) itemData.brand = data.brand
-        if (data.category) itemData.category = data.category
-        if (data.image_url) itemData.image_url = data.image_url
-        lookupSource.value = data.source === 'openfoodfacts' ? 'Open Food Facts' : 'Local History'
+        if (data.name) itemData.name = data.name;
+        if (data.brand) itemData.brand = data.brand;
+        if (data.category) itemData.category = data.category;
+        if (data.image_url) itemData.image_url = data.image_url;
+        lookupSource.value =
+          data.source === "openfoodfacts" ? "Open Food Facts" : "Local History";
       }
     }
   } catch (e) {
-    console.error('Barcode lookup failed:', e)
+    console.error("Barcode lookup failed:", e);
   } finally {
-    isLookingUpEan.value = false
+    isLookingUpEan.value = false;
   }
 }
 
 // Method exposed to parent to inject detected barcode or date
 function setBarcode(barcode) {
-  itemData.ean = barcode
-  lookupBarcode(barcode)
+  itemData.ean = barcode;
+  lookupBarcode(barcode);
 }
 
 function setDate(dateStr) {
-  itemData.expiration_date = dateStr
+  itemData.expiration_date = dateStr;
 }
 
 defineExpose({
   setBarcode,
   setDate,
-})
+});
 
 async function submitForm() {
-  if (!isFormValid.value) return
-  isSubmitting.value = true
+  if (!isFormValid.value) return;
+  isSubmitting.value = true;
   try {
-    emit('save', { ...itemData })
+    emit("save", { ...itemData });
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
 }
 </script>

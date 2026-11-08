@@ -15,7 +15,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "black>=26.10.1",
     "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.4",
 ]
 
 [tool.pytest.ini_options]
@@ -24,4 +27,25 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore::starlette.testclient.StarletteDeprecationWarning",
 ]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [".git", ".venv", "frontend", "certs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["B008", "E501"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | frontend
+  | certs
+)/
+'''
 

@@ -6,6 +6,7 @@ build/
 
 # Database
 *.db
+*.db*
 *.sqlite3
 
 # Virtual environments
@@ -24,6 +25,12 @@ frontend/dist/
 # SSL Certificates
 certs/
 *.pem
+
+# Coverage and test artifacts
+.coverage
+coverage/
+frontend/coverage/
+site/
 
 
 frontend/coverage/

@@ -5,69 +5,48 @@ name: CI
 # ----------------------------------------------------------------------
 on:
   push:
-    branches: [ "main" ]          # Deploy site only from main
+    branches: [ "main" ]
   pull_request:
     branches: [ "*" ]
 
 # ----------------------------------------------------------------------
+# Permissions
+# ----------------------------------------------------------------------
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+# ----------------------------------------------------------------------
 # Global env vars
 # ----------------------------------------------------------------------
-
 env:
   PYTHON_VERSION: "3.11"
-  UV_CACHE_DIR: "~/.cache/uv"
-  NODE_CACHE_DIR: "~/.npm"
   FRONTEND_DIST: "frontend/dist"
   SITE_DIR: "site"
 
 jobs:
   # --------------------------------------------------------------------
-  # 1️⃣ Install Python + UV + dev tools, cache UV
+  # 1️⃣ Backend Lint & Format
   # --------------------------------------------------------------------
-  setup-python:
+  lint-format-backend:
+    name: Backend Lint & Format
     runs-on: ubuntu-latest
-    outputs:
-      uv-cache-key: ${{ steps.uv-cache.outputs.cache-primary-key }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
+      - name: Set up Python (setup-python)
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install UV (bootstrap)
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-      - name: Cache UV packages
-        id: uv-cache
-        uses: actions/cache@v4
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
         with:
-          path: ${{ env.UV_CACHE_DIR }}
-          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          enable-cache: true
 
-      - name: Install Python deps + dev tools
-        run: |
-          uv sync --frozen
-          uv pip install ruff black pytest pytest-cov
-
-  # --------------------------------------------------------------------
-  # 2️⃣ Backend lint & format
-  # --------------------------------------------------------------------
-  lint-format-backend:
-    needs: setup-python
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install UV (cached)
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-      - name: Restore UV cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.UV_CACHE_DIR }}
-          key: ${{ needs.setup-python.outputs.uv-cache-key }}
+      - name: Install Python dependencies
+        run: uv sync --frozen
 
       - name: Run ruff (lint)
         run: uv run ruff check .
@@ -76,22 +55,26 @@ jobs:
         run: uv run black --check .
 
   # --------------------------------------------------------------------
-  # 3️⃣ Backend tests + coverage (HTML + XML)
+  # 2️⃣ Backend Tests & Coverage
   # --------------------------------------------------------------------
   test-backend:
-    needs: setup-python
+    name: Backend Tests & Coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install UV (cached)
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-      - name: Restore UV cache
-        uses: actions/cache@v4
+      - name: Set up Python (setup-python)
+        uses: actions/setup-python@v5
         with:
-          path: ${{ env.UV_CACHE_DIR }}
-          key: ${{ needs.setup-python.outputs.uv-cache-key }}
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        run: uv sync --frozen
 
       - name: Run pytest with coverage
         run: |
@@ -108,40 +91,20 @@ jobs:
           retention-days: 7
 
   # --------------------------------------------------------------------
-  # 4️⃣ Frontend setup (npm install) – cache
-  # --------------------------------------------------------------------
-  setup-frontend:
-    runs-on: ubuntu-latest
-    outputs:
-      node-modules-key: ${{ steps.node-cache.outputs.cache-primary-key }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache npm packages
-        id: node-cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.NODE_CACHE_DIR }}
-          key: node-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
-
-      - name: Install npm dependencies
-        working-directory: frontend
-        run: npm ci
-
-  # --------------------------------------------------------------------
-  # 5️⃣ Frontend lint & format
+  # 3️⃣ Frontend Lint & Format
   # --------------------------------------------------------------------
   lint-format-frontend:
-    needs: setup-frontend
+    name: Frontend Lint & Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Restore npm cache
-        uses: actions/cache@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          path: ${{ env.NODE_CACHE_DIR }}
-          key: ${{ needs.setup-frontend.outputs.node-modules-key }}
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install npm deps
         working-directory: frontend
@@ -156,19 +119,20 @@ jobs:
         run: npm run format:check
 
   # --------------------------------------------------------------------
-  # 6️⃣ Frontend tests + coverage (Vitest)
+  # 4️⃣ Frontend Tests & Coverage
   # --------------------------------------------------------------------
   test-frontend:
-    needs: setup-frontend
+    name: Frontend Tests & Coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Restore npm cache
-        uses: actions/cache@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          path: ${{ env.NODE_CACHE_DIR }}
-          key: ${{ needs.setup-frontend.outputs.node-modules-key }}
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install npm deps
         working-directory: frontend
@@ -176,8 +140,7 @@ jobs:
 
       - name: Run Vitest with coverage
         working-directory: frontend
-        run: |
-          npm run test -- --coverage
+        run: npm run test -- --coverage
 
       - name: Upload frontend coverage HTML (artifact)
         uses: actions/upload-artifact@v4
@@ -187,19 +150,20 @@ jobs:
           retention-days: 7
 
   # --------------------------------------------------------------------
-  # 7️⃣ Build frontend assets (Vite) for deployment
+  # 5️⃣ Build Frontend Assets
   # --------------------------------------------------------------------
   build-frontend:
-    needs: [setup-frontend, test-frontend]
+    name: Build Frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Restore npm cache
-        uses: actions/cache@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          path: ${{ env.NODE_CACHE_DIR }}
-          key: ${{ needs.setup-frontend.outputs.node-modules-key }}
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install npm deps
         working-directory: frontend
@@ -209,10 +173,18 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Upload frontend dist (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: ${{ env.FRONTEND_DIST }}
+          retention-days: 7
+
   # --------------------------------------------------------------------
-  # 8️⃣ Assemble site folder (frontend + both coverage reports)
+  # 6️⃣ Assemble Site & Deploy (GitHub Pages)
   # --------------------------------------------------------------------
   assemble-site:
+    name: Assemble Site & Deploy
     needs: [test-backend, test-frontend, build-frontend]
     runs-on: ubuntu-latest
     steps:
@@ -230,19 +202,23 @@ jobs:
           name: frontend-coverage-html
           path: coverage/frontend
 
-      - name: Copy built assets
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: ${{ env.FRONTEND_DIST }}
+
+      - name: Assemble site directory
         run: |
           rm -rf ${{ env.SITE_DIR }}
           mkdir -p ${{ env.SITE_DIR }}/frontend
-          cp -r ${{ env.FRONTEND_DIST }}/* ${{ env.SITE_DIR }}/frontend/
-
-      - name: Add coverage reports
-        run: |
           mkdir -p ${{ env.SITE_DIR }}/coverage
+          cp -r ${{ env.FRONTEND_DIST }}/* ${{ env.SITE_DIR }}/frontend/
           cp -r coverage/backend ${{ env.SITE_DIR }}/coverage/backend
           cp -r coverage/frontend ${{ env.SITE_DIR }}/coverage/frontend
 
-      - name: Deploy site (GitHub Pages)
+      - name: Deploy site to GitHub Pages
+        if: github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -251,10 +227,11 @@ jobs:
           keep_files: false
 
   # --------------------------------------------------------------------
-  # 9️⃣ Post a status comment on PR / commit
+  # 7️⃣ Notification (Comment on PR / commit)
   # --------------------------------------------------------------------
   notify:
-    needs: [lint-format-backend, test-backend, lint-format-frontend, test-frontend, build-frontend, assemble-site]
+    name: CI Status Notification
+    needs: [lint-format-backend, test-backend, lint-format-frontend, test-frontend, build-frontend]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -262,20 +239,32 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { context, github } = require('@actions/github');
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            const conclusion = context.workflow && context.workflow === 'success' ? '✅ Success' : '❌ Failure';
-            const message = `CI workflow finished. ${conclusion}\nRun details: ${runUrl}`;
-            if (context.payload.pull_request) {
-              await github.rest.issues.createComment({
-                ...context.repo,
-                issue_number: context.payload.pull_request.number,
-                body: message
-              });
-            } else {
-              await github.rest.repos.createCommitComment({
-                ...context.repo,
-                commit_sha: context.sha,
-                body: message
-              });
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const jobResults = [
+              '${{ needs.lint-format-backend.result }}',
+              '${{ needs.test-backend.result }}',
+              '${{ needs.lint-format-frontend.result }}',
+              '${{ needs.test-frontend.result }}',
+              '${{ needs.build-frontend.result }}'
+            ];
+            const isSuccess = jobResults.every(r => r === 'success');
+            const conclusion = isSuccess ? '✅ Success' : '❌ Failure';
+            const message = `CI workflow finished: ${conclusion}\nRun details: ${runUrl}`;
+
+            try {
+              if (context.payload.pull_request) {
+                await github.rest.issues.createComment({
+                  ...context.repo,
+                  issue_number: context.payload.pull_request.number,
+                  body: message
+                });
+              } else {
+                await github.rest.repos.createCommitComment({
+                  ...context.repo,
+                  commit_sha: context.sha,
+                  body: message
+                });
+              }
+            } catch (err) {
+              console.log('Posting notification comment was skipped or failed:', err.message);
             }

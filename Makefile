@@ -6,7 +6,7 @@ GREEN  := \033[32m
 YELLOW := \033[33m
 RESET  := \033[0m
 
-.PHONY: help install install-backend install-frontend build run run-ssl cert dev-backend dev-frontend test test-v seed clean clean-db
+.PHONY: help install install-backend install-frontend build run run-ssl cert dev-backend dev-frontend test test-v seed clean clean-db ci ci-local ci-act
 
 help: ## Show this help message
 	@echo ""
@@ -85,6 +85,7 @@ clean: ## Clean build artifacts, temporary cache files
 	@echo "$(YELLOW)Cleaning caches and temporary files...$(RESET)"
 	rm -rf frontend/dist
 	rm -rf .pytest_cache
+	rm -rf .coverage coverage frontend/coverage site
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	@echo "$(GREEN)✓ Workspace cleaned.$(RESET)"
 
@@ -92,3 +93,28 @@ clean-db: ## Reset SQLite database (removes mhd_tracker.db)
 	@echo "$(YELLOW)Removing mhd_tracker.db...$(RESET)"
 	rm -f mhd_tracker.db
 	@echo "$(GREEN)✓ Database reset. Next run will initialize a fresh database.$(RESET)"
+
+ci: ci-local ## Alias for ci-local
+
+ci-local: ## Run complete CI pipeline locally (lint, tests, coverage, build, site)
+	@echo "$(CYAN)Running local CI pipeline...$(RESET)"
+	uv run python scripts/run_ci_local.py
+
+ci-act: ## Run GitHub Actions workflow locally via nektos/act in Docker
+	@if command -v act >/dev/null 2>&1; then \
+		echo "$(CYAN)Running GitHub Actions locally with act...$(RESET)"; \
+		TOKEN_ARG=""; \
+		if [ -n "$$GITHUB_TOKEN" ]; then \
+			TOKEN_ARG="-s GITHUB_TOKEN=$$GITHUB_TOKEN"; \
+		fi; \
+		act pull_request $$TOKEN_ARG --container-architecture linux/amd64; \
+	else \
+		echo "$(YELLOW)act is not installed.$(RESET)"; \
+		echo "To run GitHub Actions locally with Docker, install 'act':"; \
+		echo "  macOS (Homebrew): brew install act"; \
+		echo "  Linux: curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash"; \
+		echo "  Windows (Scoop): scoop install act"; \
+		echo "Or run the fast local native pipeline with:"; \
+		echo "  make ci-local"; \
+		exit 1; \
+	fi

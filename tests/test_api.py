@@ -1,5 +1,5 @@
-import os
 from datetime import date, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -8,7 +8,6 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import Item
 
 # In-memory SQLite for testing with StaticPool so all connections share the memory DB
 TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -19,7 +18,6 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 
 def override_get_db():
@@ -116,23 +114,32 @@ def test_consume_item(client):
 def test_stats_calculation(client):
     today = date.today()
     # Expired item (-2 days)
-    client.post("/api/items", json={
-        "name": "Expired Cheese",
-        "expiration_date": (today - timedelta(days=2)).isoformat(),
-        "quantity": 1,
-    })
+    client.post(
+        "/api/items",
+        json={
+            "name": "Expired Cheese",
+            "expiration_date": (today - timedelta(days=2)).isoformat(),
+            "quantity": 1,
+        },
+    )
     # Expiring soon item (+1 day)
-    client.post("/api/items", json={
-        "name": "Expiring Salad",
-        "expiration_date": (today + timedelta(days=1)).isoformat(),
-        "quantity": 1,
-    })
+    client.post(
+        "/api/items",
+        json={
+            "name": "Expiring Salad",
+            "expiration_date": (today + timedelta(days=1)).isoformat(),
+            "quantity": 1,
+        },
+    )
     # Fresh item (+30 days)
-    client.post("/api/items", json={
-        "name": "Canned Beans",
-        "expiration_date": (today + timedelta(days=30)).isoformat(),
-        "quantity": 3,
-    })
+    client.post(
+        "/api/items",
+        json={
+            "name": "Canned Beans",
+            "expiration_date": (today + timedelta(days=30)).isoformat(),
+            "quantity": 3,
+        },
+    )
 
     res = client.get("/api/items/stats")
     assert res.status_code == 200
@@ -145,11 +152,14 @@ def test_stats_calculation(client):
 
 def test_delete_item(client):
     today = date.today()
-    res = client.post("/api/items", json={
-        "name": "To Delete",
-        "expiration_date": today.isoformat(),
-        "quantity": 1,
-    })
+    res = client.post(
+        "/api/items",
+        json={
+            "name": "To Delete",
+            "expiration_date": today.isoformat(),
+            "quantity": 1,
+        },
+    )
     item_id = res.json()["id"]
 
     del_res = client.delete(f"/api/items/{item_id}")
