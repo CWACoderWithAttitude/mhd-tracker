@@ -39,6 +39,38 @@
         class="w-full h-full object-cover"
       ></video>
 
+      <!-- Camera Quick Controls Overlay (Torch, Zoom) -->
+      <div
+        v-if="isScanningLive && (isTorchSupported || isZoomSupported)"
+        class="absolute top-4 inset-x-4 flex items-center justify-center gap-2.5 z-20 pointer-events-auto"
+      >
+        <!-- Torch / Flashlight Toggle Button -->
+        <button
+          v-if="isTorchSupported"
+          @click="toggleTorch"
+          :class="[
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition shadow-lg backdrop-blur-md',
+            isTorchOn
+              ? 'bg-amber-400 text-slate-950 shadow-amber-400/40 ring-2 ring-amber-300'
+              : 'bg-slate-900/80 text-slate-200 border border-slate-700/80 hover:bg-slate-800',
+          ]"
+        >
+          <Zap v-if="isTorchOn" class="w-3.5 h-3.5 fill-current" />
+          <ZapOff v-else class="w-3.5 h-3.5 text-slate-400" />
+          <span>{{ isTorchOn ? "Flash On" : "Flash" }}</span>
+        </button>
+
+        <!-- 1x / 2x Zoom Toggle Button (Vital for small expiration dates) -->
+        <button
+          v-if="isZoomSupported"
+          @click="toggleZoom"
+          class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-900/80 text-sky-300 border border-sky-600/40 hover:bg-slate-800 transition shadow-lg backdrop-blur-md"
+        >
+          <ZoomIn class="w-3.5 h-3.5" />
+          <span>{{ currentZoom > 1 ? `${currentZoom}x` : "1x Zoom" }}</span>
+        </button>
+      </div>
+
       <!-- Reticle Box for Date Crop (shown during live scanning) -->
       <div
         v-if="isScanningLive"
@@ -246,9 +278,25 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import { createWorker } from "tesseract.js";
-import { Calendar, X, Camera, UploadCloud, Loader2 } from "lucide-vue-next";
+import {
+  Calendar,
+  X,
+  Camera,
+  UploadCloud,
+  Loader2,
+  Zap,
+  ZapOff,
+  ZoomIn,
+} from "lucide-vue-next";
 import { parseExpirationDate, playBeepSound } from "../utils/dateParser";
-import { formatCameraErrorMessage } from "../utils/barcodeHelper";
+import {
+  formatCameraErrorMessage,
+  calculateDownscaleDimensions,
+} from "../utils/barcodeHelper";
+import {
+  prepareOcrCanvas,
+  preprocessImageDataForOcr,
+} from "../utils/ocrPreprocessor";
 
 const emit = defineEmits(["detected", "close"]);
 
@@ -264,6 +312,11 @@ const isHttpNonLocal = ref(false);
 const detectedDate = ref(null);
 const rawOcrText = ref("");
 const manualInputDate = ref("");
+
+const isTorchSupported = ref(false);
+const isTorchOn = ref(false);
+const isZoomSupported = ref(false);
+const currentZoom = ref(1);
 
 let stream = null;
 let tesseractWorker = null;
@@ -306,14 +359,64 @@ function checkEnvironmentAndStart() {
 async function initWorker() {
   try {
     tesseractWorker = await createWorker("deu+eng", 1, {
-      logger: (m) => {},
+      logger: () => {},
     });
+    // PSM 6: Assume a single uniform block of text (vastly superior for date stamps than default PSM 3)
     await tesseractWorker.setParameters({
+      tessedit_pageseg_mode: "6",
       tessedit_char_whitelist:
-        "0123456789./- :MHDBEXPBbestbeforeMhdExpJanFebMarAprMaiJunJulAugSepOktNovDez",
+        "0123456789./-: MHDBEXPOoDQIli!ZzSsBbJanFebMarMrzAprMaiMayJunJulAugSepOktOctNovDezDecAvrAoutAgoDicOtt",
+      preserve_interword_spaces: "1",
     });
   } catch (err) {
     console.error("Failed to init Tesseract worker:", err);
+  }
+}
+
+function checkTrackCapabilities() {
+  setTimeout(() => {
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+
+    const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+    if (capabilities.torch) {
+      isTorchSupported.value = true;
+    }
+    if (capabilities.zoom) {
+      isZoomSupported.value = true;
+      currentZoom.value = track.getSettings ? track.getSettings().zoom || 1 : 1;
+    }
+  }, 400);
+}
+
+async function toggleTorch() {
+  if (!stream) return;
+  const track = stream.getVideoTracks()[0];
+  if (!track) return;
+  try {
+    isTorchOn.value = !isTorchOn.value;
+    await track.applyConstraints({
+      advanced: [{ torch: isTorchOn.value }],
+    });
+  } catch (err) {
+    console.warn("Torch toggle failed:", err);
+  }
+}
+
+async function toggleZoom() {
+  if (!stream) return;
+  const track = stream.getVideoTracks()[0];
+  if (!track) return;
+  try {
+    const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+    const maxZoom = capabilities.zoom?.max || 2;
+    currentZoom.value = currentZoom.value > 1 ? 1 : Math.min(2, maxZoom);
+    await track.applyConstraints({
+      advanced: [{ zoom: currentZoom.value }],
+    });
+  } catch (err) {
+    console.warn("Zoom toggle failed:", err);
   }
 }
 
@@ -328,12 +431,14 @@ async function startLiveCamera() {
       videoEl.value.srcObject = stream;
     }
 
+    checkTrackCapabilities();
+
     if (autoScanInterval) clearInterval(autoScanInterval);
     autoScanInterval = setInterval(() => {
       if (!isProcessing.value && !detectedDate.value) {
         captureAndOcr();
       }
-    }, 2500);
+    }, 2000);
   }
 
   // Tier 1: HD environment camera
@@ -378,6 +483,7 @@ async function startLiveCamera() {
 
 function stopCamera() {
   isScanningLive.value = false;
+  isTorchOn.value = false;
   if (stream) {
     stream.getTracks().forEach((track) => track.stop());
     stream = null;
@@ -403,9 +509,6 @@ async function captureAndOcr() {
   isProcessing.value = true;
   try {
     const video = videoEl.value;
-    const canvas = canvasEl.value;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-
     const vw = video.videoWidth;
     const vh = video.videoHeight;
 
@@ -414,28 +517,34 @@ async function captureAndOcr() {
     const cropX = Math.floor((vw - cropW) / 2);
     const cropY = Math.floor((vh - cropH) / 2);
 
-    canvas.width = cropW;
-    canvas.height = cropH;
+    const cropRect = { x: cropX, y: cropY, width: cropW, height: cropH };
 
-    ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+    // Pass 1: Scaled 2x with dynamic Otsu binarization and dot-matrix bridge
+    const preparedCanvas = prepareOcrCanvas(video, cropRect, 2, {
+      contrastStretch: true,
+      binarize: true,
+      connectDots: true,
+    });
 
-    // Preprocessing: High contrast grayscale
-    const imgData = ctx.getImageData(0, 0, cropW, cropH);
-    const data = imgData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const avg = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-      const adjusted = avg > 120 ? 255 : avg < 80 ? 0 : avg;
-      data[i] = adjusted;
-      data[i + 1] = adjusted;
-      data[i + 2] = adjusted;
-    }
-    ctx.putImageData(imgData, 0, 0);
-
-    const { data: result } = await tesseractWorker.recognize(canvas);
-    const text = result.text.trim();
+    const { data: result } = await tesseractWorker.recognize(preparedCanvas);
+    let text = result.text.trim();
     rawOcrText.value = text;
 
-    const parsed = parseExpirationDate(text);
+    let parsed = parseExpirationDate(text);
+
+    // Pass 2 Fallback: If no date found, try normalized grayscale without harsh binarization
+    if (!parsed) {
+      const fallbackCanvas = prepareOcrCanvas(video, cropRect, 2, {
+        contrastStretch: true,
+        binarize: false,
+      });
+      const { data: fallbackResult } =
+        await tesseractWorker.recognize(fallbackCanvas);
+      text = fallbackResult.text.trim();
+      rawOcrText.value = text;
+      parsed = parseExpirationDate(text);
+    }
+
     if (parsed) {
       detectedDate.value = parsed;
       playBeepSound();
@@ -454,17 +563,64 @@ async function onFileSelected(e) {
   isProcessing.value = true;
   try {
     if (!tesseractWorker) await initWorker();
-    const { data: result } = await tesseractWorker.recognize(file);
-    const parsed = parseExpirationDate(result.text);
+
+    // Load image into an Image object to handle photo optimization
+    const imgBitmap = await createImageBitmap(file);
+    const { width: optWidth, height: optHeight } = calculateDownscaleDimensions(
+      imgBitmap.width,
+      imgBitmap.height,
+      1600,
+    );
+
+    const canvas = document.createElement("canvas");
+    canvas.width = optWidth;
+    canvas.height = optHeight;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(imgBitmap, 0, 0, optWidth, optHeight);
+
+    // Preprocessing pass 1: Center 65% x 65% crop (where users typically frame the date stamp)
+    const cropW = Math.floor(optWidth * 0.65);
+    const cropH = Math.floor(optHeight * 0.65);
+    const cropX = Math.floor((optWidth - cropW) / 2);
+    const cropY = Math.floor((optHeight - cropH) / 2);
+
+    const centerCanvas = prepareOcrCanvas(
+      canvas,
+      { x: cropX, y: cropY, width: cropW, height: cropH },
+      1.5,
+      { contrastStretch: true, binarize: true, connectDots: true },
+    );
+
+    const { data: centerResult } =
+      await tesseractWorker.recognize(centerCanvas);
+    let parsed = parseExpirationDate(centerResult.text);
+
+    // Pass 2 Fallback: Full image with grayscale enhancement
+    if (!parsed) {
+      const fullImgData = ctx.getImageData(0, 0, optWidth, optHeight);
+      const processed = preprocessImageDataForOcr(
+        fullImgData.data,
+        optWidth,
+        optHeight,
+        { contrastStretch: true, binarize: false },
+      );
+      fullImgData.data.set(processed);
+      ctx.putImageData(fullImgData, 0, 0);
+
+      const { data: fullResult } = await tesseractWorker.recognize(canvas);
+      parsed = parseExpirationDate(fullResult.text);
+    }
+
     if (parsed) {
       detectedDate.value = parsed;
       playBeepSound();
     } else {
       alert(
-        `Could not extract date from photo. Text found: "${result.text.slice(0, 80)}"`,
+        "Could not extract a valid expiration date from the photo. Please ensure the date is in focus and well lit.",
       );
     }
   } catch (err) {
+    console.error("Error reading image file for OCR:", err);
     alert("Error reading image file for OCR.");
   } finally {
     isProcessing.value = false;
