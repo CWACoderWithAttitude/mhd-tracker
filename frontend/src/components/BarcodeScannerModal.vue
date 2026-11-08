@@ -277,6 +277,7 @@ import {
   cleanBarcode,
   getOptimalQrboxDimensions,
   optimizeImageForBarcode,
+  rotateImageFile,
   formatCameraErrorMessage,
 } from "../utils/barcodeHelper";
 
@@ -300,6 +301,19 @@ const currentCameraIndex = ref(0);
 
 const nativeCameraInputRef = ref(null);
 const filePickerRef = ref(null);
+
+let nativeDetector = null;
+let nativeDetectorAnimFrame = null;
+
+if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+  try {
+    nativeDetector = new window.BarcodeDetector({
+      formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "qr_code"],
+    });
+  } catch (e) {
+    console.warn("Native BarcodeDetector not available:", e);
+  }
+}
 
 onMounted(async () => {
   checkEnvironmentAndStart();
@@ -367,8 +381,35 @@ function checkTrackCapabilities() {
   }, 400);
 }
 
+function startNativeBarcodeLoop() {
+  if (!nativeDetector || !isScanningLive.value) return;
+  const videoEl = document.querySelector("#barcode-reader video");
+  if (!videoEl || videoEl.readyState < 2) {
+    nativeDetectorAnimFrame = requestAnimationFrame(startNativeBarcodeLoop);
+    return;
+  }
+
+  nativeDetector
+    .detect(videoEl)
+    .then((barcodes) => {
+      if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+        handleBarcodeFound(barcodes[0].rawValue);
+        return;
+      }
+      if (isScanningLive.value) {
+        nativeDetectorAnimFrame = requestAnimationFrame(startNativeBarcodeLoop);
+      }
+    })
+    .catch(() => {
+      if (isScanningLive.value) {
+        nativeDetectorAnimFrame = requestAnimationFrame(startNativeBarcodeLoop);
+      }
+    });
+}
+
 async function onScannerStarted() {
   checkTrackCapabilities();
+  startNativeBarcodeLoop();
   try {
     const devices = await Html5Qrcode.getCameras();
     if (devices && devices.length > 1) {
@@ -426,7 +467,6 @@ async function switchCamera() {
         qrbox: (viewfinderWidth, viewfinderHeight) => {
           return getOptimalQrboxDimensions(viewfinderWidth, viewfinderHeight);
         },
-        aspectRatio: 1.0,
       },
       handleBarcodeFound,
       () => {},
@@ -454,7 +494,6 @@ async function startLiveScanner() {
         qrbox: (viewfinderWidth, viewfinderHeight) => {
           return getOptimalQrboxDimensions(viewfinderWidth, viewfinderHeight);
         },
-        aspectRatio: 1.0,
         videoConstraints: {
           facingMode: "environment",
           width: { min: 1280, ideal: 1920 },
@@ -486,7 +525,6 @@ async function startLiveScanner() {
         qrbox: (viewfinderWidth, viewfinderHeight) => {
           return getOptimalQrboxDimensions(viewfinderWidth, viewfinderHeight);
         },
-        aspectRatio: 1.0,
       },
       handleBarcodeFound,
       () => {},
@@ -513,7 +551,6 @@ async function startLiveScanner() {
         qrbox: (viewfinderWidth, viewfinderHeight) => {
           return getOptimalQrboxDimensions(viewfinderWidth, viewfinderHeight);
         },
-        aspectRatio: 1.0,
       },
       handleBarcodeFound,
       () => {},
@@ -532,6 +569,10 @@ async function startLiveScanner() {
 async function stopScanner() {
   isScanningLive.value = false;
   isTorchOn.value = false;
+  if (nativeDetectorAnimFrame) {
+    cancelAnimationFrame(nativeDetectorAnimFrame);
+    nativeDetectorAnimFrame = null;
+  }
   if (html5QrCode) {
     try {
       if (html5QrCode.isScanning) {
@@ -581,26 +622,53 @@ async function onFileSelected(e) {
 
   isProcessingFile.value = true;
   try {
+    // Pass 1: Hardware-accelerated native BarcodeDetector if available
+    if (nativeDetector) {
+      try {
+        const bitmap = await createImageBitmap(file);
+        const results = await nativeDetector.detect(bitmap);
+        if (results && results.length > 0 && results[0].rawValue) {
+          handleBarcodeFound(results[0].rawValue);
+          return;
+        }
+      } catch (nativeErr) {
+        console.warn("Native detection on photo failed:", nativeErr);
+      }
+    }
+
     if (!html5QrCode) {
       html5QrCode = createScannerInstance();
     }
 
-    // Step 1: Optimize photo resolution (downscale from 12-48MP to max 1600px)
+    // Step 2: Optimize photo resolution (downscale from 12-48MP to max 1600px)
     const optimizedFile = await optimizeImageForBarcode(file, 1600);
 
     try {
-      // First pass with optimized image
+      // Pass 2: ZXing with optimized resolution
       const result = await html5QrCode.scanFile(optimizedFile, true);
       handleBarcodeFound(result);
       return;
     } catch (firstPassErr) {
       console.warn(
-        "First pass barcode scan failed, attempting high-resolution pass:",
+        "First pass barcode scan failed, attempting rotated pass:",
         firstPassErr,
       );
     }
 
-    // Step 2: Fallback attempt on original file in case barcode lines were tiny
+    // Pass 3: Try 90-degree rotation (solves vertical barcodes on bottles and upright cans)
+    try {
+      const rotatedFile = await rotateImageFile(optimizedFile, 90);
+      const rotatedResult = await html5QrCode.scanFile(rotatedFile, true);
+      handleBarcodeFound(rotatedResult);
+      return;
+    } catch (rotErr) {
+      console.warn(
+        "Rotated pass failed, attempting full-resolution pass:",
+        rotErr,
+      );
+    }
+
+    // Pass 4: Fallback attempt on original file in case barcode lines were tiny
     const directResult = await html5QrCode.scanFile(file, true);
     handleBarcodeFound(directResult);
   } catch (err) {

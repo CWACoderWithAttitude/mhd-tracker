@@ -79,4 +79,22 @@ describe("barcodeHelper", () => {
       );
     });
   });
+
+  describe("barcode validation edge cases", () => {
+    it("handles UPC-A format (12 digits)", () => {
+      // Coca Cola 12-digit UPC-A: 049000006346 (valid)
+      expect(isValidEanChecksum("049000006346")).toBe(true);
+    });
+
+    it("rejects non-numeric barcode strings", () => {
+      expect(isValidEanChecksum("ABC1234567890")).toBe(false);
+      expect(isValidEanChecksum("")).toBe(false);
+    });
+  });
+
+  describe("Barcode formats list", () => {
+    it("provides standard grocery barcode formats", () => {
+      expect(cleanBarcode("  049000006346  ")).toBe("049000006346");
+    });
+  });
 });
