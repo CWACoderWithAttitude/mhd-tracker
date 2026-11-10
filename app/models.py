@@ -38,3 +38,11 @@ class ProductCache(Base):
     category = Column(String(100), nullable=True)
     image_url = Column(String(1024), nullable=True)
     fetched_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+class Location(Base):
+    __tablename__ = "locations"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(100), unique=True, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)

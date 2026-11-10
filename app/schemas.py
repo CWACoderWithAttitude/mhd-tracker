@@ -42,6 +42,29 @@ class ItemResponse(ItemBase):
     updated_at: datetime
     days_left: int = 0
 
+# ---- Location Schemas -----------------------------------------------------
+class LocationBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+class LocationCreate(LocationBase):
+    pass
+
+class LocationUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+
+class LocationResponse(LocationBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    days_left: int = 0
+
 
 class ProductLookupResponse(BaseModel):
     found: bool

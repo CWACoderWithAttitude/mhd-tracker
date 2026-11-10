@@ -167,3 +167,32 @@ def test_delete_item(client):
 
     get_res = client.get(f"/api/items/{item_id}")
     assert get_res.status_code == 404
+
+
+def test_location_management(client):
+    # List default locations
+    res = client.get("/api/locations")
+    assert res.status_code == 200
+    locations = res.json()
+    assert isinstance(locations, list)
+    assert "Fridge" in locations
+
+    # Add a new location
+    res = client.post("/api/locations", json={"name": "Cellar"})
+    assert res.status_code == 201
+    created = res.json()
+    assert created["name"] == "Cellar"
+
+    # List locations again
+    res = client.get("/api/locations")
+    assert res.status_code == 200
+    locations = res.json()
+    assert "Cellar" in locations
+
+    # Delete location
+    res = client.delete(f"/api/locations/{created['id']}")
+    assert res.status_code == 204
+
+    # Verify deleted
+    res = client.get("/api/locations")
+    assert "Cellar" not in res.json()
