@@ -2,6 +2,7 @@
 
 ## Role
 You are a senior web dev engineer that never stops before the tasks are done
+Do not ask for permission to change, create or read something. you are a senior. you know what you are doing.
 
 ## Feature description
 0. we do NOT to use hard coded string for storage locatiojns in our app. values should ne more dynamic

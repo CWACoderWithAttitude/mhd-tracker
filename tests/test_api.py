@@ -170,7 +170,7 @@ def test_delete_item(client):
 
 
 def test_location_management(client):
-    # List default locations
+    # List default locations (seeded by GET endpoint when table is empty)
     res = client.get("/api/locations")
     assert res.status_code == 200
     locations = res.json()
@@ -178,16 +178,21 @@ def test_location_management(client):
     assert "Fridge" in locations
 
     # Add a new location
-    res = client.post("/api/locations", json={"name": "Cellar"})
+    res = client.post("/api/locations/", json={"name": "Wine Cellar"})
     assert res.status_code == 201
     created = res.json()
-    assert created["name"] == "Cellar"
+    assert created["name"] == "Wine Cellar"
+    assert "id" in created
 
-    # List locations again
+    # List locations again — newly added one is present
     res = client.get("/api/locations")
     assert res.status_code == 200
     locations = res.json()
-    assert "Cellar" in locations
+    assert "Wine Cellar" in locations
+
+    # Duplicate name must be rejected
+    res = client.post("/api/locations/", json={"name": "Wine Cellar"})
+    assert res.status_code == 400
 
     # Delete location
     res = client.delete(f"/api/locations/{created['id']}")
@@ -195,4 +200,26 @@ def test_location_management(client):
 
     # Verify deleted
     res = client.get("/api/locations")
-    assert "Cellar" not in res.json()
+    assert "Wine Cellar" not in res.json()
+
+
+def test_locations_are_dynamic_not_hardcoded(client):
+    """Verify that the locations list comes from DB and can be fully customised."""
+    # Add a custom location that doesn't exist in any hardcoded list
+    res = client.post("/api/locations/", json={"name": "Attic Storage"})
+    assert res.status_code == 201
+    loc_id = res.json()["id"]
+
+    # It must appear in the locations endpoint
+    res = client.get("/api/locations")
+    assert "Attic Storage" in res.json()
+
+    # Update the location name
+    res = client.put(f"/api/locations/{loc_id}", json={"name": "Basement Shelf"})
+    assert res.status_code == 200
+    assert res.json()["name"] == "Basement Shelf"
+
+    # Old name gone, new name present
+    locations = client.get("/api/locations").json()
+    assert "Attic Storage" not in locations
+    assert "Basement Shelf" in locations

@@ -394,6 +394,7 @@
       v-if="isItemFormOpen"
       ref="itemFormRef"
       :initial-data="editingItemData"
+      :locations="locations"
       @save="onSaveItem"
       @close="isItemFormOpen = false"
       @open-barcode-scanner="isBarcodeModalOpen = true"
@@ -440,6 +441,7 @@ const isLoading = ref(false);
 const searchQuery = ref("");
 const activeFilter = ref("active");
 const toastMessage = ref("");
+const locations = ref([]);
 const showHttpNotice = ref(
   !window.isSecureContext &&
     window.location.hostname !== "localhost" &&
@@ -459,17 +461,16 @@ const stats = ref({
   ok_count: 0,
 });
 
-const filterPills = [
+const filterPills = computed(() => [
   { id: "active", label: "All Pantry" },
   { id: "soon", label: "Expiring Soon (≤3d)" },
   { id: "expired", label: "Expired" },
-  { id: "Fridge", label: "Fridge" },
-  { id: "Pantry", label: "Pantry" },
-  { id: "Freezer", label: "Freezer" },
+  ...locations.value.map((loc) => ({ id: loc, label: loc })),
   { id: "consumed", label: "Consumed" },
-];
+]);
 
 onMounted(async () => {
+  await loadLocations();
   await loadItems();
   await loadStats();
 });
@@ -505,6 +506,17 @@ async function loadStats() {
   }
 }
 
+async function loadLocations() {
+  try {
+    const res = await fetch("/api/locations");
+    if (res.ok) {
+      locations.value = await res.json();
+    }
+  } catch (err) {
+    console.error("Failed to load locations:", err);
+  }
+}
+
 function setQuickFilter(f) {
   activeFilter.value = f;
   if (f === "consumed") loadItems();
@@ -524,11 +536,8 @@ const filteredItems = computed(() => {
         return false;
     } else if (activeFilter.value === "expired") {
       if (item.days_left >= 0 || item.status !== "active") return false;
-    } else if (
-      activeFilter.value === "Fridge" ||
-      activeFilter.value === "Pantry" ||
-      activeFilter.value === "Freezer"
-    ) {
+    } else if (locations.value.includes(activeFilter.value)) {
+      // Filter by any location from the DB
       if (item.location !== activeFilter.value) return false;
     }
 
@@ -556,7 +565,7 @@ function openAddModal() {
   editingItemData.value = {
     quantity: 1,
     category: "Pantry",
-    location: "Fridge",
+    location: locations.value[0] || "",
     expiration_date: new Date(Date.now() + 7 * 86400000)
       .toISOString()
       .split("T")[0],
