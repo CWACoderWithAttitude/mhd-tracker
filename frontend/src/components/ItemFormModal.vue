@@ -228,11 +228,9 @@
               v-model="itemData.location"
               class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
             >
-              <option
-                v-for="loc in locations"
-                :key="loc"
-                :value="loc"
-              >{{ loc }}</option>
+              <option v-for="loc in locations" :key="loc" :value="loc">
+                {{ loc }}
+              </option>
             </select>
           </div>
         </div>
