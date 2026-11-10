@@ -6,7 +6,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Item, ProductCache, Location
+from app.models import Item, ProductCache
 from app.schemas import DashboardStats, ItemCreate, ItemResponse, ItemUpdate
 
 router = APIRouter(prefix="/api/items", tags=["Items"])

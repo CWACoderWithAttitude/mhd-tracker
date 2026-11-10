@@ -42,6 +42,7 @@ class ItemResponse(ItemBase):
     updated_at: datetime
     days_left: int = 0
 
+
 # ---- Location Schemas -----------------------------------------------------
 class LocationBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
