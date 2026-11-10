@@ -6,7 +6,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Item, ProductCache
+from app.models import Item, ProductCache, Location
 from app.schemas import DashboardStats, ItemCreate, ItemResponse, ItemUpdate
 
 router = APIRouter(prefix="/api/items", tags=["Items"])
@@ -101,6 +101,8 @@ def list_items(
 
 @router.post("", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
 def create_item(payload: ItemCreate, db: Session = Depends(get_db)):
+    # Location validation is optional; any string is accepted.
+
     item = Item(
         ean=payload.ean,
         name=payload.name,
@@ -113,6 +115,7 @@ def create_item(payload: ItemCreate, db: Session = Depends(get_db)):
         image_url=payload.image_url,
         status="active",
     )
+
     db.add(item)
 
     # If EAN is present, update or save product cache

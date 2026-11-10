@@ -7,13 +7,21 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine
-from app.routers import items, lookup
+from app.routers import items, lookup, admin_locations
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize database tables
     Base.metadata.create_all(bind=engine)
+    # Seed default locations if table empty
+    from sqlalchemy.orm import Session
+    from app.models import Location
+    with Session(bind=engine) as db:
+        if db.query(Location).count() == 0:
+            for name in ["Fridge", "Pantry", "Cellar"]:
+                db.add(Location(name=name))
+            db.commit()
     yield
 
 
@@ -35,6 +43,7 @@ app.add_middleware(
 
 # API routers
 app.include_router(items.router)
+app.include_router(admin_locations.router)
 app.include_router(lookup.router)
 
 
