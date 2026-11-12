@@ -85,7 +85,6 @@ class CategoryResponse(CategoryBase):
     created_at: datetime
 
 
-
 class ProductLookupResponse(BaseModel):
     found: bool
     ean: str

@@ -41,7 +41,7 @@ STAGES = [
         "id": "backend-lint",
         "name": "Backend Lint & Format",
         "commands": [
-            ["uv", "run", "ruff", "check", "."],
+            ["uv", "run", "ruff", "check", "--fix", "."],
             ["uv", "run", "black", "--check", "."],
         ],
         "category": "backend",

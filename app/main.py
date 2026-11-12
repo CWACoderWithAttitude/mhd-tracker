@@ -32,7 +32,6 @@ async def lifespan(app: FastAPI):
     yield
 
 
-
 app = FastAPI(
     title="MHD Tracker API",
     description="FastAPI Backend for Food Expiration Date & Barcode Tracking",
