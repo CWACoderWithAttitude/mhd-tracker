@@ -2,6 +2,10 @@
 
 A modern, responsive, mobile-first web application to track household grocery inventory, scan EAN barcodes, and recognize expiration dates (MHD) directly using your smartphone's camera.
 
+## Links
+
+- [API Docs](https://localhost:8000/docs)
+
 ---
 
 ## 🌟 Key Features
