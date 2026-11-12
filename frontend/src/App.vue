@@ -395,6 +395,7 @@
       ref="itemFormRef"
       :initial-data="editingItemData"
       :locations="locations"
+      :categories="categories"
       @save="onSaveItem"
       @close="isItemFormOpen = false"
       @open-barcode-scanner="isBarcodeModalOpen = true"
@@ -442,6 +443,7 @@ const searchQuery = ref("");
 const activeFilter = ref("active");
 const toastMessage = ref("");
 const locations = ref([]);
+const categories = ref([]);
 const showHttpNotice = ref(
   !window.isSecureContext &&
     window.location.hostname !== "localhost" &&
@@ -471,6 +473,7 @@ const filterPills = computed(() => [
 
 onMounted(async () => {
   await loadLocations();
+  await loadCategories();
   await loadItems();
   await loadStats();
 });
@@ -514,6 +517,17 @@ async function loadLocations() {
     }
   } catch (err) {
     console.error("Failed to load locations:", err);
+  }
+}
+
+async function loadCategories() {
+  try {
+    const res = await fetch("/api/categories");
+    if (res.ok) {
+      categories.value = await res.json();
+    }
+  } catch (err) {
+    console.error("Failed to load categories:", err);
   }
 }
 
@@ -564,7 +578,7 @@ function showToast(msg) {
 function openAddModal() {
   editingItemData.value = {
     quantity: 1,
-    category: "Pantry",
+    category: categories.value[0]?.name || "",
     location: locations.value[0] || "",
     expiration_date: new Date(Date.now() + 7 * 86400000)
       .toISOString()
@@ -675,22 +689,8 @@ async function deleteItem(item) {
 }
 
 function getCategoryEmoji(cat) {
-  switch (cat) {
-    case "Dairy":
-      return "🥛";
-    case "Meat":
-      return "🥩";
-    case "Drinks":
-      return "🧃";
-    case "Produce":
-      return "🥦";
-    case "Frozen":
-      return "❄️";
-    case "Snacks":
-      return "🍫";
-    default:
-      return "🥫";
-  }
+  const found = categories.value.find((c) => c.name === cat);
+  return found?.icon || "🥫";
 }
 
 function getUrgencyBorder(days, status) {

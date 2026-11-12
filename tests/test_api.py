@@ -223,3 +223,71 @@ def test_locations_are_dynamic_not_hardcoded(client):
     locations = client.get("/api/locations").json()
     assert "Attic Storage" not in locations
     assert "Basement Shelf" in locations
+
+
+def test_category_management(client):
+    # List default categories (seeded by GET endpoint when table is empty)
+    res = client.get("/api/categories")
+    assert res.status_code == 200
+    categories = res.json()
+    assert isinstance(categories, list)
+    cat_names = [c["name"] for c in categories]
+    assert "Dairy" in cat_names
+    assert "Drinks" in cat_names
+    dairy_cat = next(c for c in categories if c["name"] == "Dairy")
+    assert dairy_cat["icon"] == "🥛"
+
+    # Add a new category
+    res = client.post("/api/categories/", json={"name": "Bakery", "icon": "🥐"})
+    assert res.status_code == 201
+    created = res.json()
+    assert created["name"] == "Bakery"
+    assert created["icon"] == "🥐"
+    assert "id" in created
+
+    # List categories again - newly added one is present
+    res = client.get("/api/categories")
+    assert res.status_code == 200
+    categories = res.json()
+    cat_names = [c["name"] for c in categories]
+    assert "Bakery" in cat_names
+
+    # Duplicate name must be rejected
+    res = client.post("/api/categories/", json={"name": "Bakery", "icon": "🥖"})
+    assert res.status_code == 400
+
+    # Delete category
+    res = client.delete(f"/api/categories/{created['id']}")
+    assert res.status_code == 204
+
+    # Verify deleted
+    res = client.get("/api/categories")
+    cat_names = [c["name"] for c in res.json()]
+    assert "Bakery" not in cat_names
+
+
+def test_categories_are_dynamic_not_hardcoded(client):
+    """Verify that categories and icons come from DB and can be fully customised."""
+    res = client.post("/api/categories/", json={"name": "Sweets", "icon": "🍬"})
+    assert res.status_code == 201
+    cat_id = res.json()["id"]
+
+    # Verify it appears in categories endpoint
+    categories = client.get("/api/categories").json()
+    sweets = next((c for c in categories if c["id"] == cat_id), None)
+    assert sweets is not None
+    assert sweets["name"] == "Sweets"
+    assert sweets["icon"] == "🍬"
+
+    # Update category name and icon
+    res = client.put(f"/api/categories/{cat_id}", json={"name": "Candy", "icon": "🍭"})
+    assert res.status_code == 200
+    assert res.json()["name"] == "Candy"
+    assert res.json()["icon"] == "🍭"
+
+    # Verify old name is gone, new name is present
+    categories = client.get("/api/categories").json()
+    assert not any(c["name"] == "Sweets" for c in categories)
+    candy = next((c for c in categories if c["name"] == "Candy"), None)
+    assert candy is not None
+    assert candy["icon"] == "🍭"

@@ -209,14 +209,13 @@
               v-model="itemData.category"
               class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
             >
-              <option value="Dairy">🥛 Dairy & Cheese</option>
-              <option value="Pantry">🥫 Pantry & Dry</option>
-              <option value="Produce">🥦 Fresh Produce</option>
-              <option value="Meat">🥩 Meat & Fish</option>
-              <option value="Drinks">🧃 Drinks</option>
-              <option value="Frozen">❄️ Frozen</option>
-              <option value="Snacks">🍫 Snacks</option>
-              <option value="Other">📦 Other</option>
+              <option
+                v-for="cat in categories"
+                :key="cat.id || cat.name"
+                :value="cat.name"
+              >
+                {{ cat.icon ? cat.icon + " " : "" }}{{ cat.name }}
+              </option>
             </select>
           </div>
 
@@ -275,7 +274,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from "vue";
+import { ref, computed, reactive, watch } from "vue";
 import {
   PackagePlus,
   Edit3,
@@ -297,6 +296,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  categories: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const emit = defineEmits([
@@ -313,11 +316,23 @@ const itemData = reactive({
   brand: props.initialData.brand || "",
   expiration_date: props.initialData.expiration_date || "",
   quantity: props.initialData.quantity || 1,
-  category: props.initialData.category || "Pantry",
+  category:
+    props.initialData.category ||
+    (props.categories[0] ? props.categories[0].name : ""),
   location: props.initialData.location || props.locations[0] || "",
   notes: props.initialData.notes || "",
   image_url: props.initialData.image_url || "",
 });
+
+watch(
+  () => props.categories,
+  (newCats) => {
+    if (!itemData.category && newCats && newCats.length > 0) {
+      itemData.category = newCats[0].name;
+    }
+  },
+  { immediate: true },
+);
 
 const isLookingUpEan = ref(false);
 const lookupSource = ref("");
