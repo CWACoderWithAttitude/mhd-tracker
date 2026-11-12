@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches & virtual environments
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+.env
+
+# Database files & certificates
+*.db
+*.db-backup
+*.db.dump
+*.sqlite3
+certs/
+
+# Build & temp directories
+site/
+app/
+tests/
+frontend/node_modules/
+frontend/coverage/
+frontend/dist/
