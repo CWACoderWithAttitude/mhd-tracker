@@ -1,0 +1,7 @@
+= MHD Tracker Frontend
+:toc: left
+:toclevels: 2
+
+== Dockerizing the Frontend
+
+I'll follow this guide to dockerize the frontend: https://dev.to/thisdotmedia/dockerizing-a-react-application-3p4l or this one: https://thedkpatel.medium.com/dockerizing-react-application-built-with-vite-a-simple-guide-4c41eb09defa[Dockerizing React Application Built with Vite: A Simple Guide]

@@ -26,7 +26,7 @@ install-frontend: ## Install frontend npm packages
 	@echo "$(CYAN)Installing npm packages for frontend...$(RESET)"
 	cd frontend && npm install
 
-build: ## Build frontend assets into frontend/dist for production
+build: install ## Build frontend assets into frontend/dist for production
 	@echo "$(CYAN)Building frontend with Vite...$(RESET)"
 	cd frontend && npm run build
 	@echo "$(GREEN)✓ Frontend assets compiled to frontend/dist$(RESET)"
@@ -118,3 +118,7 @@ ci-act: ## Run GitHub Actions workflow locally via nektos/act in Docker
 		echo "  make ci-local"; \
 		exit 1; \
 	fi
+
+build-fe-image: ## Build Docker image for frontend (mhd-tracker-frontend)
+	@echo "$(CYAN)Building Docker image for frontend...$(RESET)"
+	docker build -t mhd-tracker-frontend ./frontend
