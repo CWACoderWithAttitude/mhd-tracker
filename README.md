@@ -5,7 +5,7 @@ A modern, responsive, mobile-first web application to track household grocery in
 ## Links
 
 - [API Docs](https://localhost:8000/docs)
-
+- [EmojiPedia](https://emojipedia.org/jar)
 ---
 
 ## 🌟 Key Features

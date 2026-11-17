@@ -122,3 +122,19 @@ ci-act: ## Run GitHub Actions workflow locally via nektos/act in Docker
 build-fe-image: ## Build Docker image for frontend (mhd-tracker-frontend)
 	@echo "$(CYAN)Building Docker image for frontend...$(RESET)"
 	docker build -t mhd-tracker-frontend ./frontend
+
+db_dump:
+	sqlite3 mhd_tracker.db .dump > mhd_tracker.db.dump
+
+db_import:
+	sqlite mhd_tracker.db < mhd_tracker.db.dump
+
+#
+# https://www.google.com/search?client=safari&rls=en&q=uv+python+3.14+baseimage&ie=UTF-8&oe=UTF-8
+#
+build-be-image:
+	@echo "$(CYAN)Building Docker image for backend...$(RESET)"
+	docker build --rm=true -t mhd-tracker-backend -f Dockerfile.backend .
+run-be-image:
+	@echo "$(CYAN)Running Docker image for backend...$(RESET)"
+	docker run -i --rm -p 9000:8000 -t mhd-tracker-backend

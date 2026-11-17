@@ -1,0 +1,18 @@
+#https://www.google.com/search?client=safari&rls=en&q=uv+python+3.14+baseimage&ie=UTF-8&oe=UTF-8
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+
+# Enable bytecode compilation for faster execution
+ENV UV_COMPILE_BYTECODE=1
+
+WORKDIR /app
+COPY pyproject.toml uv.lock .
+COPY app/ .
+
+# Install dependencies without installing the project itself first (layer caching)
+RUN uv sync --locked --no-install-project --no-dev
+
+# Copy the rest of the application
+COPY . /app
+
+# Run application via uv
+CMD ["uv", "run", "main.py"]
